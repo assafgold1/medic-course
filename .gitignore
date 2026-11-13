@@ -1,13 +1,14 @@
 .DS_Store
-# Android
-android/.gradle/
-android/build/
-android/app/build/
-android/local.properties
-android/keystore.properties
+# Gradle / Kotlin
+.gradle/
+.kotlin/
+build/
+local.properties
+keystore.properties
 *.jks
 *.keystore
-# iOS
-ios/build/
-ios/Medic.xcodeproj/xcuserdata/
-ios/Medic.xcodeproj/project.xcworkspace/xcuserdata/
+# Server data (SQLite with users and progress)
+server/data/
+# Xcode
+iosApp/iosApp.xcodeproj/xcuserdata/
+iosApp/iosApp.xcodeproj/project.xcworkspace/xcuserdata/
