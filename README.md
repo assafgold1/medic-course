@@ -50,3 +50,11 @@ node tools/export-content.js
 זה מעדכן את `content.json` בשרת ובאפליקציות, מעתיק את התמונות לאפליקציות ולאתר, ויוצר את `docs/extra.js` לאתר. השרת מגיש את הגרסה החדשה, והאפליקציות מורידות אותה בפתיחה.
 
 החומר נועד לחזרה ולתרגול, ואינו מחליף את מצגות הקורס או את הפרוטוקולים הרשמיים.
+
+## פרסום
+
+- **שרת ואתר:** `deploy/deploy-server.sh` בונה ומתקין על השרת (kali) כשירות `medic` ב-`/opt/medic`, מאזין רק ל-127.0.0.1:8787. nginx מול הדומיין: `deploy/nginx-medic.conf` (מחליפים את DOMAIN ומריצים certbot).
+- **כתובת השרת באפליקציות:** `SERVER_URL` ב-`shared/src/commonMain/kotlin/com/taninoni/medic/Platform.kt` חייבת להיות `https://` לפני גרסת חנות.
+- **Android:** `tools/release-android.sh` בונה AAB חתום (מפתח העלאה ב-`~/Library/Application Support/MedicCourse-deploy/medic-upload.jks`, סיסמה ב-`keystore.properties` שלא נכנס לגיט).
+- **iOS:** `tools/release-ios.sh` מעלה ל-App Store Connect (צריך שהאפליקציה com.taninoni.medic תהיה קיימת שם).
+- **טקסטים לחנויות ותשובות פרטיות:** `deploy/STORE_LISTING.md`. מדיניות פרטיות: `docs/privacy.html`.

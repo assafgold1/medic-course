@@ -21,6 +21,8 @@ class AppModel(private val scope: CoroutineScope) {
     var content by mutableStateOf<Content?>(null); private set
     var progress by mutableStateOf(Progress()); private set
     var user by mutableStateOf<UserDto?>(null); private set
+    /** True right after a sign-in that created a new account (shows a welcome line). */
+    var justCreated by mutableStateOf(false); private set
     var syncState by mutableStateOf(SyncState.Idle); private set
     var syncMessage by mutableStateOf(""); private set
     var selectedCats by mutableStateOf(settings.getStringOrNull(K_SEL)?.split(',')?.filter { it.isNotBlank() }?.toSet()); private set
@@ -143,11 +145,25 @@ class AppModel(private val scope: CoroutineScope) {
     /* ---------- account & sync ---------- */
 
 
-    suspend fun login(email: String, password: String) = signIn(api.login(email.trim(), password))
+    /** Returns true when a new account was created. */
+    suspend fun login(email: String, password: String) {
+        val r = api.login(email.trim(), password)
+        justCreated = false
+        signIn(r)
+    }
 
-    suspend fun register(email: String, password: String, name: String) = signIn(api.register(email.trim(), password, name.trim()))
+    suspend fun register(name: String, email: String, password: String) {
+        val r = api.register(email.trim(), password, name.trim())
+        justCreated = true
+        signIn(r)
+    }
+
+    suspend fun students() = api.students(requireToken())
+    suspend fun student(id: Long) = api.student(requireToken(), id)
 
     private suspend fun signIn(r: AuthResponse) {
+        // Progress on this device belongs to whoever used it before; never mix it into another account.
+        if (settings.getLongOrNull(K_OWNER) != r.user.id) { progress = Progress(); saveProgress(); settings.putLong(K_OWNER, r.user.id) }
         token = r.token; user = r.user
         settings.putString(K_TOKEN, r.token)
         settings.putString(K_USER, api.json.encodeToString(r.user))
@@ -166,11 +182,12 @@ class AppModel(private val scope: CoroutineScope) {
     suspend fun changePassword(current: String, new: String) = api.changePassword(requireToken(), current, new)
 
     /** Deletes the account and its synced data on the server. Progress on this device is kept. */
+    /** Deletes the account on the server and the progress on this device; a fresh automatic account follows. */
     suspend fun deleteAccount(password: String) {
         api.deleteAccount(requireToken(), password)
         token = null; user = null
         settings.remove(K_TOKEN); settings.remove(K_USER)
-        syncState = SyncState.Idle; syncMessage = ""
+        clearLocal()
     }
 
     fun logout() {
@@ -178,7 +195,14 @@ class AppModel(private val scope: CoroutineScope) {
         token = null; user = null
         settings.remove(K_TOKEN); settings.remove(K_USER)
         syncState = SyncState.Idle; syncMessage = ""
+        clearLocal()
         if (t != null) scope.launch { api.logout(t) }
+    }
+
+    /** After sign-out or deletion the next person on this device starts clean (their data comes from the server). */
+    private fun clearLocal() {
+        progress = Progress(); saveProgress(); settings.remove(K_OWNER)
+        syncState = SyncState.Idle; syncMessage = ""
     }
 
     suspend fun sync() {
@@ -201,6 +225,7 @@ class AppModel(private val scope: CoroutineScope) {
         const val K_BUNDLED = "bundled_version"
         const val K_PROGRESS = "progress"
         const val K_TOKEN = "token"
+        const val K_OWNER = "progress_owner"
         const val K_USER = "user"
         const val K_SEL = "selected_cats"
         const val K_COUNT = "question_count"

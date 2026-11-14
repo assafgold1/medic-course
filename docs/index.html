@@ -1,7 +1,9 @@
 <!doctype html>
 <html lang="he" dir="rtl"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#1D5AE6">
+<meta name="theme-color" content="#F26922">
+<link rel="icon" type="image/png" href="brand/uh-icon.png">
+<link rel="apple-touch-icon" href="brand/uh-icon.png">
 <meta name="description" content="מסלול חובש: לימוד, תרגול ומבחנים לקורס חובשים">
 <style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
 </head><body>
@@ -12,21 +14,21 @@
 <style>
 /* Layout: blue app bands on top, white rounded sheets that overlap them; cards in a 2-column grid */
 :root{
-  --band-a:#1D5AE6; --band-b:#4C8BF8; --blue:#0A4FD6; --blue-deep:#0B33A8; --blue-soft:#E7EFFE;
-  --paper:#EEF3FB; --surface:#FFFFFF; --ink:#16213A; --muted:#66728A; --line:#BFD2F7; --hair:#E3EAF6;
-  --good:#16A34A; --good-soft:#E3F6EA; --mid:#E39A0B; --mid-soft:#FDF2DC; --bad:#D92D2D; --bad-soft:#FBE4E4;
+  --band-a:#F26922; --band-b:#FF8F45; --blue:#D9520E; --blue-deep:#A83E08; --blue-soft:#FFEEE3;
+  --paper:#FFF6F0; --surface:#FFFFFF; --ink:#1F1A17; --muted:#7A6A60; --line:#F6C4A6; --hair:#F5E5DA;
+  --good:#16A34A; --good-soft:#E3F6EA; --mid:#D48806; --mid-soft:#FDF2DC; --bad:#D92D2D; --bad-soft:#FBE4E4;
   --on-band:#FFFFFF; --band-ink:rgba(255,255,255,.82);
   --f:"Rubik",system-ui,-apple-system,"Segoe UI",Arial,sans-serif;
   --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
   --r:18px; --gut:max(16px,env(safe-area-inset-left,0px)); --gutr:max(16px,env(safe-area-inset-right,0px));
 }
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
-  --band-a:#123A9C; --band-b:#2A62D6; --blue:#4D86FF; --blue-deep:#9FC0FF; --blue-soft:#17264A;
-  --paper:#0A1120; --surface:#131C2F; --ink:#E7EDF8; --muted:#97A3BA; --line:#2C3F66; --hair:#22304D;
+  --band-a:#B8460E; --band-b:#E5651F; --blue:#FF8A47; --blue-deep:#FFB58A; --blue-soft:#3A2114;
+  --paper:#140D09; --surface:#20140E; --ink:#F6ECE6; --muted:#BFA595; --line:#5A3524; --hair:#3A261B;
   --good:#3DD47A; --good-soft:#123523; --mid:#F2B73F; --mid-soft:#3A2C0E; --bad:#FF6B6B; --bad-soft:#3D1717; color-scheme:dark}}
 :root[data-theme="dark"]{
-  --band-a:#123A9C; --band-b:#2A62D6; --blue:#4D86FF; --blue-deep:#9FC0FF; --blue-soft:#17264A;
-  --paper:#0A1120; --surface:#131C2F; --ink:#E7EDF8; --muted:#97A3BA; --line:#2C3F66; --hair:#22304D;
+  --band-a:#B8460E; --band-b:#E5651F; --blue:#FF8A47; --blue-deep:#FFB58A; --blue-soft:#3A2114;
+  --paper:#140D09; --surface:#20140E; --ink:#F6ECE6; --muted:#BFA595; --line:#5A3524; --hair:#3A261B;
   --good:#3DD47A; --good-soft:#123523; --mid:#F2B73F; --mid-soft:#3A2C0E; --bad:#FF6B6B; --bad-soft:#3D1717; color-scheme:dark}
 
 *{box-sizing:border-box}
@@ -58,6 +60,60 @@ h3{font-size:18px}
 .brand{display:flex;align-items:center;gap:12px}
 .brand .mark{width:46px;height:46px;border-radius:50%;background:#fff;display:grid;place-items:center;box-shadow:0 0 0 4px rgba(255,255,255,.35)}
 .brand .mark svg{width:28px;height:28px}
+.splash{position:fixed;inset:0;z-index:100;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:26px;transition:opacity .35s}
+.splash.out{opacity:0;pointer-events:none}
+.splash .stage{position:relative;width:260px;height:260px;display:grid;place-items:center}
+.splash .stage img{width:150px;height:150px;animation:sp-in .9s cubic-bezier(.2,.9,.3,1.25) both, sp-beat .8s ease-in-out 1s both}
+.splash .ring{position:absolute;inset:0;margin:auto;width:118px;height:118px;border-radius:50%;border:6px solid #F26922;opacity:0;animation:sp-ring .9s linear .85s}
+.splash .ring.r2{animation-delay:1.1s}
+.splash .words{display:flex;flex-direction:column;align-items:center;gap:10px;animation:sp-up .45s ease-out 1s both}
+.splash .words span{color:#7A6A60;font-size:16px}
+.splash .words b{font-size:26px;font-weight:800;color:#1F1A17}
+@keyframes sp-in{from{transform:scale(.25) rotate(-140deg);opacity:0}to{transform:none;opacity:1}}
+@keyframes sp-beat{0%,100%{transform:none}20%{transform:scale(1.08)}45%{transform:none}65%{transform:scale(1.06)}}
+@keyframes sp-ring{from{transform:scale(.9);opacity:.45;border-width:6px}to{transform:scale(2.2);opacity:0;border-width:1px}}
+@keyframes sp-up{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.splash *{animation-duration:.01s!important;animation-delay:0s!important}}
+.brand .mark img{width:30px;height:30px}
+.anat{margin:14px 0 4px;background:var(--paper);border-radius:20px;overflow:hidden}
+.anat .pic{position:relative;background:#fff}
+.anat .pic img{display:block;width:100%;height:auto;cursor:zoom-in}
+.anat .dot{position:absolute;transform:translate(-50%,-50%);width:26px;height:26px;border-radius:50%;border:2.5px solid var(--blue);background:#fff;color:var(--blue);font:700 12px/1 var(--f);cursor:pointer;padding:0}
+.anat .dot.on{background:var(--blue);color:#fff;width:30px;height:30px}
+.anat .info{padding:12px 16px;color:var(--muted);font-size:14.5px;line-height:1.5}
+.anat .info b{display:block;color:var(--blue);font-size:17px;margin-bottom:2px}
+.anat .info em{display:block;font-style:normal;color:var(--blue);font-weight:600;font-size:13.5px;margin-top:4px}
+.anat .chips{display:flex;flex-wrap:wrap;gap:6px;padding:0 12px 12px}
+.anat .chips button{border:0;border-radius:999px;background:var(--surface);color:var(--ink);font:inherit;font-size:13px;padding:6px 10px;cursor:pointer}
+.anat .chips button.on{background:var(--blue);color:#fff}
+
+.qimg{display:block;width:100%;border:0;padding:0;margin:4px 0 6px;border-radius:20px;overflow:hidden;background:var(--paper);cursor:zoom-in;text-align:right;font:inherit}
+.qimg img{display:block;width:100%;height:200px;object-fit:contain;background:#fff}
+.qimg .cap{display:block;padding:10px 14px;color:var(--muted);font-size:13.5px;line-height:1.45}
+.login{position:fixed;inset:0;z-index:90;background:var(--surface);overflow:auto;display:flex;justify-content:center;padding:max(28px,env(safe-area-inset-top)) 20px 40px}
+.login .box{width:100%;max-width:440px;display:flex;flex-direction:column;align-items:center;gap:14px;text-align:center}
+.login h1{font-size:30px;margin:4px 0 0}
+.login p{color:var(--muted);line-height:1.55;margin:0}
+.login label{width:100%;display:flex;flex-direction:column;gap:6px;text-align:right;font-weight:600;font-size:14px;color:var(--ink)}
+.login input{font:inherit;font-size:16px;padding:14px;border-radius:14px;border:1.5px solid var(--line);background:var(--paper);color:var(--ink)}
+.login input:focus{outline:2px solid var(--blue);outline-offset:1px}
+.login .err{color:var(--bad);min-height:1em;font-size:14.5px}
+.login .btn{width:100%}
+.login .seg{width:100%;margin:2px 0}
+.login .switch{color:var(--blue);font-weight:700;text-decoration:none;padding:6px}
+button.icon-btn{border:0;cursor:pointer;font:inherit}
+.stats3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:6px 0 14px}
+.stats3 div{background:var(--paper);border-radius:18px;padding:14px 8px;display:flex;flex-direction:column;align-items:center;gap:2px}
+.stats3 b{font-size:22px}.stats3 span{color:var(--muted);font-size:12.5px}
+.seg{display:flex;gap:4px;background:var(--paper);border-radius:16px;padding:4px;margin:10px 0 14px}
+.seg button{flex:1;border:0;background:transparent;border-radius:12px;padding:10px 4px;font:inherit;font-weight:700;color:var(--muted);cursor:pointer}
+.seg button.on{background:var(--surface);color:var(--blue)}
+.catlist{display:flex;flex-direction:column;gap:12px;background:var(--paper);border-radius:22px;padding:18px}
+.catlist div{display:grid;grid-template-columns:1fr auto;gap:6px 10px;align-items:center}
+.catlist .bar{grid-column:1/-1}
+.catlist small{color:var(--muted)}.catlist b.ok{color:var(--good)}.catlist b.bad{color:var(--bad)}
+
+
 .brand b{font-size:22px;font-weight:800}
 .brand nav{margin-inline-start:auto;display:flex;gap:8px}
 .score-row{display:flex;align-items:center;gap:18px;flex-wrap:wrap}
@@ -256,6 +312,18 @@ td .mono{color:var(--blue)}
 </style>
 <div id="app" dir="rtl" lang="he"></div>
 
+<div class="splash" id="splash" aria-hidden="true">
+  <div class="stage"><span class="ring"></span><span class="ring r2"></span><img src="brand/uh-icon.png" alt=""></div>
+  <div class="words"><b>מסלול חובש</b><span>לימוד ותרגול לקורס חובשים</span></div>
+</div>
+<script>
+// Opening animation once per browser session (about 2 seconds), then fade out.
+(function(){ const el=document.getElementById('splash'); let seen=false;
+  try{ seen=sessionStorage.getItem('medic:splash')==='1'; sessionStorage.setItem('medic:splash','1') }catch(e){}
+  if(seen){ el.remove(); return }
+  setTimeout(()=>{ el.classList.add('out'); setTimeout(()=>el.remove(),400) }, 2200);
+})();
+</script>
 <script src="extra.js"></script>
 <script>
 
@@ -3097,12 +3165,102 @@ let best = store.get('best2', {});
 let hist = store.get('history', []);
 let sel = store.get('sel', GROUP_ORDER.slice()).filter(c=>GROUP_ORDER.includes(c));
 let qcount = store.get('qcount', 30);
+let qtime = store.get('qtime', {});   // when each answer was given, for merging with the server
+
+/* ===================== ACCOUNT (token in an HttpOnly cookie) ===================== */
+// On the site served by the medic server, the first visit creates an automatic account; the server keeps
+// its token in the medic_token cookie, so every /api call below is authenticated without any JavaScript access
+// to the token. On a static copy (GitHub Pages) there is no /api and the site keeps working from localStorage.
+const acct = { user: null };
+async function api(path, opt = {}) {
+  const r = await fetch(path, { credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, ...opt });
+  if (!r.ok) throw r;
+  return r.status === 204 ? null : r.json();
+}
+// Sign-in is required on the server-hosted site (instructors follow each student). 401 = not signed in.
+async function ensureAccount() {
+  try { acct.user = await api('/api/me'); return true }
+  catch (e) { if (e.status === 401) showLogin(); return false }
+}
+function onSignedIn(user) {
+  acct.user = user;
+  // Progress in this browser belongs to whoever used it before; start clean for a different account.
+  if (store.get('owner', null) !== user.id) { qstate = {}; qtime = {}; hist = []; store.set('resetAt', 0); saveQ(); store.set('history', hist); store.set('owner', user.id) }
+}
+function showLogin() {
+  const el = document.createElement('div'); el.className = 'login'; el.id = 'login';
+  let mode = 'login';
+  el.innerHTML = `<form class="box" autocomplete="on" novalidate>
+    <img src="brand/uh-icon.png" alt="" width="110" height="110">
+    <h1>מסלול חובש</h1>
+    <div class="seg" role="tablist"><button type="button" data-m="login" class="on">כניסה</button><button type="button" data-m="register">הרשמה</button></div>
+    <p class="reg">חשבון חדש. השם יוצג למדריכים שלך בקורס.</p>
+    <label class="reg">שם מלא<input name="name" type="text" autocomplete="name"></label>
+    <label>מייל<input name="email" type="email" autocomplete="username"></label>
+    <label><span class="pwl">סיסמה</span><input name="password" type="password" autocomplete="current-password"></label>
+    <label class="reg">אימות סיסמה<input name="confirm" type="password" autocomplete="new-password"></label>
+    <div class="err" role="alert"></div>
+    <button class="btn" type="submit">כניסה</button>
+    <a href="#" class="switch">אין לך חשבון? הרשמה</a>
+  </form>`;
+  const f = el.querySelector('form'), err = el.querySelector('.err'), btn = el.querySelector('.btn');
+  const setMode = m => {
+    mode = m; err.textContent = '';
+    el.querySelectorAll('.seg button').forEach(b => b.classList.toggle('on', b.dataset.m === m));
+    el.querySelectorAll('.reg').forEach(x => x.hidden = m !== 'register');
+    el.querySelector('.pwl').textContent = m === 'register' ? 'סיסמה (לפחות 8 תווים)' : 'סיסמה';
+    f.password.autocomplete = m === 'register' ? 'new-password' : 'current-password';
+    btn.textContent = m === 'register' ? 'יצירת חשבון' : 'כניסה';
+    el.querySelector('.switch').textContent = m === 'register' ? 'כבר רשום? כניסה' : 'אין לך חשבון? הרשמה';
+  };
+  el.querySelectorAll('.seg button').forEach(b => b.onclick = () => setMode(b.dataset.m));
+  el.querySelector('.switch').onclick = e => { e.preventDefault(); setMode(mode === 'login' ? 'register' : 'login') };
+  setMode('login');
+  f.onsubmit = async ev => {
+    ev.preventDefault(); err.textContent = '';
+    const email = f.email.value.trim(), password = f.password.value, name = f.name.value.trim();
+    if (!email || !password) { err.textContent = 'יש למלא מייל וסיסמה'; return }
+    if (mode === 'register') {
+      if (!name) { err.textContent = 'יש למלא שם מלא'; return }
+      if (password !== f.confirm.value) { err.textContent = 'הסיסמאות לא זהות'; return }
+    }
+    const label = btn.textContent; btn.disabled = true; btn.textContent = 'רגע…';
+    try {
+      const r = await api(mode === 'register' ? '/api/auth/register' : '/api/auth/login', { method: 'POST', body: JSON.stringify({ email, password, name }) });
+      onSignedIn(r.user); el.remove(); await syncProgress(); route();
+    } catch (e) {
+      let msg = 'אין חיבור לשרת. נסה שוב בעוד רגע.';
+      try { msg = (await e.json()).error || msg } catch (_) {}
+      err.textContent = msg; btn.disabled = false; btn.textContent = label;
+    }
+  };
+  document.body.appendChild(el);
+}
+async function logout() {
+  try { await api('/api/auth/logout', { method: 'POST' }) } catch (e) {}
+  acct.user = null; qstate = {}; qtime = {}; hist = []; saveQ(); store.set('history', hist); store.set('owner', null);
+  location.hash = ''; route(); showLogin();
+}
+async function syncProgress() {
+  if (!acct.user) return;
+  const answers = {};
+  for (const [id, v] of Object.entries(qstate)) answers[id] = { v, t: qtime[id] || 1 };
+  const attempts = hist.filter(h => h.id).map(h => ({ id: h.id, title: h.title, kind: h.kind || 'practice', total: h.n, right: h.right, pct: h.pct, at: h.at }));
+  try {
+    const m = await api('/api/progress', { method: 'PUT', body: JSON.stringify({ answers, attempts, updatedAt: Date.now(), resetAt: store.get('resetAt', 0) }) });
+    qstate = {}; qtime = {};
+    for (const [id, a] of Object.entries(m.answers)) { qstate[id] = a.v; qtime[id] = a.t }
+    hist = m.attempts.slice(0, 20).map(a => { const d = new Date(a.at); return { id: a.id, title: a.title, kind: a.kind, n: a.total, right: a.right, pct: a.pct, at: a.at, date: `${d.getDate()}.${d.getMonth()+1}` } });
+    store.set('resetAt', m.resetAt || 0); saveQ(); store.set('history', hist);
+  } catch (e) {}
+}
 
 /* ===================== DATA HELPERS ===================== */
 const $app = document.getElementById('app');
 const shuffle = a => { a=a.slice(); for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]} return a };
 const LETTERS = ['א','ב','ג','ד'];
 // Material and images added from the course decks (docs/extra.js, generated by tools/export-content.js).
+if (window.NEW_TOPICS) for (const n of NEW_TOPICS) if (!TOPICS.some(t => t.id === n.id)) { TOPICS.push(JSON.parse(JSON.stringify(n))); ORDER.splice(ORDER.indexOf(n.after) + 1, 0, n.id) }
 if (window.EXTRA) TOPICS.forEach(t => { const e = EXTRA[t.id]; if (!e) return;
   t.learn = t.learn.concat(e.learn); t.quiz = t.quiz.concat(e.quiz); t.images = e.images; });
 function openViewer(images, start){
@@ -3121,6 +3279,20 @@ function openViewer(images, start){
   document.addEventListener('keydown', key);
   draw(); document.body.appendChild(lb);
 }
+// One illustration per question (docs/extra.js); its caption is shown only after answering.
+const qImg = id => (window.QIMG || {})[id];
+const qCap = id => { const f = qImg(id); for (const t of TOPICS) for (const [file, c] of (t.images || [])) if (file === f) return c; return '' };
+// Images inside the text (after the matching section), with tappable anatomy points.
+const capOf = (t,f) => ((t.images||[]).find(x=>x[0]===f)||[])[1] || '';
+const galleryLeft = t => { const used = new Set((window.LAYOUT?.[t.id]?.secImgs||[]).flat()); return (t.images||[]).filter(([f])=>!used.has(f)) };
+function secImgs(t, si){
+  const L = window.LAYOUT?.[t.id]; if (!L) return '';
+  return (L.secImgs[si]||[]).map(f => { const spots = L.spots[f]||[], c = capOf(t,f);
+    return `<figure class="anat" data-f="${f}" data-c="${esc(c)}"><div class="pic"><img src="images/${f}" alt="" loading="lazy">
+      ${spots.map((sp,i)=>`<button class="dot" data-s="${i}" style="left:${sp.x}%;top:${sp.y}%">${i+1}</button>`).join('')}</div>
+      <figcaption class="info" data-cap="${esc(c)}${spots.length?'<em>הקש על המספרים כדי לראות את שם החלק והסבר</em>':''}">${esc(c)}${spots.length?'<em>הקש על המספרים כדי לראות את שם החלק והסבר</em>':''}</figcaption>
+      ${spots.length?`<div class="chips">${spots.map((sp,i)=>`<button data-s="${i}">${i+1}. ${sp.name}</button>`).join('')}</div>`:''}</figure>` }).join('');
+}
 const ALLQ = TOPICS.flatMap(t => t.quiz.map((q,i)=>({id:t.id+'#'+i, topic:t.id, cat:t.cat, q:q[0], opts:q[1], e:q[2]})));
 const topicById = id => TOPICS.find(t=>t.id===id);
 const catQ = c => ALLQ.filter(q=>q.cat===c);
@@ -3128,7 +3300,7 @@ const pctOf = list => list.length ? Math.round(list.filter(q=>qstate[q.id]===1).
 const mastery = c => pctOf(catQ(c));
 const tone = p => p>=80?'good':p>=50?'mid':'low';
 const mistakesList = () => ALLQ.filter(q=>qstate[q.id]===0);
-function saveQ(){ store.set('qstate', qstate) }
+function saveQ(){ store.set('qstate', qstate); store.set('qtime', qtime) }
 /* pick n questions spread evenly over the chosen categories */
 function pickQs(cats, n, onlyWrong){
   let pools = cats.map(c=>shuffle(catQ(c).filter(q=>!onlyWrong || qstate[q.id]===0))).filter(p=>p.length);
@@ -3157,11 +3329,15 @@ function route(){
   else if (h==='mistakes') startQuiz(shuffle(mistakesList()).slice(0,50), {title:'תרגול טעויות', back:'practice', kind:'mistakes', cats:GROUP_ORDER, instant:true});
   else if (h==='cpr-metronome') renderMetronome();
   else if (h==='numbers') renderNumbers();
+  else if (h==='instructor') renderInstructor();
+  else if (h.startsWith('student-')) renderStudent(+h.slice(8));
   else if (topicById(h)) renderTopic(h, 'learn');
   else renderHome();
   window.scrollTo(0,0);
 }
 window.addEventListener('hashchange', route);
+document.addEventListener('click', e => { if (e.target.closest('#logout')) logout() });
+const esc = v => String(v).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
 
 /* ===================== HOME ===================== */
 function renderHome(){
@@ -3170,14 +3346,16 @@ function renderHome(){
   $app.innerHTML = `
   <section class="band hero"><div class="in">
     <div class="brand">
-      <span class="mark">${P('<path d="M3 12.5h4l2-4.5 3.5 9 2.5-6.5 1.5 2h4.5" stroke="#1D5AE6" stroke-width="2.2"/>')}</span>
+      <span class="mark"><img src="brand/uh-icon.png" alt="" width="30" height="30"></span>
       <b>מסלול חובש</b>
       <nav><a class="icon-btn" href="#cpr-metronome" aria-label="מטרונום החייאה" title="מטרונום">${P('<circle cx="12" cy="13" r="7"/><path d="M12 9.5V13l2.5 2M9.5 3h5"/>')}</a>
-      <a class="icon-btn" href="#numbers" aria-label="מספרים לשינון" title="מספרים">${P('<path d="M5 9h14M5 15h14M10 4 8 20M16 4l-2 16"/>')}</a></nav>
+      <a class="icon-btn" href="#numbers" aria-label="מספרים לשינון" title="מספרים">${P('<path d="M5 9h14M5 15h14M10 4 8 20M16 4l-2 16"/>')}</a>
+      ${acct.user?.instructor?`<a class="icon-btn" href="#instructor" aria-label="התקדמות החניכים" title="מדריכים">${P('<circle cx="9" cy="8" r="3"/><path d="M3.5 19a5.5 5.5 0 0 1 11 0M16 5.5a2.5 2.5 0 0 1 0 5M20.5 19a4.5 4.5 0 0 0-3.5-4.4"/>')}</a>`:''}
+      ${acct.user?`<button class="icon-btn" id="logout" aria-label="יציאה" title="יציאה">${P('<path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3M10 17l-5-5 5-5M5 12h11"/>')}</button>`:''}</nav>
     </div>
     <div class="score-row">${ring(ov)}<div><h2 style="font-size:20px">השליטה שלך בחומר</h2>
       <p><span class="mono">${right}</span> מתוך <span class="mono">${total}</span> שאלות נענו נכון לאחרונה</p>
-      <p>${TOPICS.length} נושאים · ${GROUP_ORDER.length} קטגוריות</p></div></div>
+      <p>${acct.user?`שלום, ${esc(acct.user.name||acct.user.email)}`:`${TOPICS.length} נושאים · ${GROUP_ORDER.length} קטגוריות`}</p></div></div>
     <div class="hero-btns">
       <a class="hbtn solid" href="#practice">תרגול שאלות<small>בחירת קטגוריות והתקדמות</small></a>
       <a class="hbtn" href="#exam">מבחן מסכם<small>30 שאלות · עובר מ-${PASS}%</small></a>
@@ -3254,17 +3432,63 @@ function renderTopic(id, tab){
   if (tab==='learn'){
     pane.innerHTML = `${t.note?`<div class="callout">${t.note}</div>`:''}
       <div class="nums">${t.nums.map(([v,l])=>`<div class="num"><b>${v}</b><span>${l}</span></div>`).join('')}</div>
-      ${(t.images||[]).length?`<div class="gal-h"><h3>תמונות להמחשה</h3><span>${t.images.length} תמונות</span></div>
-      <div class="gal">${t.images.map(([f,c],k)=>`<button data-img="${k}"><img src="images/${f}" alt="" loading="lazy"><span>${c}</span></button>`).join('')}</div>`:''}
-      ${t.learn.map(s=>`<div class="sec"><h3>${s.h}</h3>${s.steps?`<ol>${s.items.map(x=>`<li><span>${x}</span></li>`).join('')}</ol>`:`<ul>${s.items.map(x=>`<li>${x}</li>`).join('')}</ul>`}</div>`).join('')}
+      ${galleryLeft(t).length?`<div class="gal-h"><h3>תמונות להמחשה</h3><span>${galleryLeft(t).length} תמונות</span></div>
+      <div class="gal">${galleryLeft(t).map(([f,c])=>[f,c,t.images.findIndex(x=>x[0]===f)]).map(([f,c,k])=>`<button data-img="${k}"><img src="images/${f}" alt="" loading="lazy"><span>${c}</span></button>`).join('')}</div>`:''}
+      ${t.learn.map((s,si)=>`<div class="sec"><h3>${s.h}</h3>${s.steps?`<ol>${s.items.map(x=>`<li><span>${x}</span></li>`).join('')}</ol>`:`<ul>${s.items.map(x=>`<li>${x}</li>`).join('')}</ul>`}${secImgs(t,si)}</div>`).join('')}
       <div class="cta"><button class="btn" data-go="quiz" style="flex:1">לתרגול (<span class="mono">${t.quiz.length}</span> שאלות)</button><button class="btn ghost" data-go="cards">כרטיסיות</button></div>`;
     pane.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>{ renderTopic(id,b.dataset.go); window.scrollTo(0,0) });
     pane.querySelectorAll('[data-img]').forEach(b=>b.onclick=()=>openViewer(t.images, +b.dataset.img));
+    pane.querySelectorAll('.anat').forEach(fig=>{
+      const spots = (window.LAYOUT?.[t.id]?.spots||{})[fig.dataset.f] || [], info = fig.querySelector('.info');
+      const pick = i => { fig.querySelectorAll('[data-s]').forEach(b=>b.classList.toggle('on', +b.dataset.s===i));
+        const sp = spots[i]; info.innerHTML = sp ? `<b>${sp.name}</b>${sp.info}` : info.dataset.cap };
+      fig.querySelectorAll('[data-s]').forEach(b=>b.onclick=e=>{ e.stopPropagation(); pick(b.classList.contains('on')?-1:+b.dataset.s) });
+      fig.querySelector('img').onclick=()=>openViewer([[fig.dataset.f, fig.dataset.c]],0);
+    });
   }
   if (tab==='cards') renderCards(t, pane);
   if (tab==='quiz') startQuiz(shuffle(ALLQ.filter(q=>q.topic===id)), {title:t.title, back:t.id, kind:'topic', topic:t.id, cats:[t.cat], instant:true, mount:pane});
 }
 
+
+/* ===================== INSTRUCTORS ===================== */
+const agoTxt = t => { if (!t) return 'לא התחיל'; const d = Math.floor((Date.now()-t)/864e5); return d<=0?'היום':d===1?'אתמול':d<30?`לפני ${d} ימים`:`לפני ${Math.floor(d/30)} חודשים` };
+async function renderInstructor(){
+  $app.innerHTML = appbar('התקדמות החניכים','home') + `<main class="sheet"><p class="lede">טוען…</p></main>`;
+  let list; try { list = await api('/api/instructor/students') } catch (e) { $app.querySelector('main').innerHTML = '<p class="lede">רק מדריכים יכולים לראות את המסך הזה.</p>'; return }
+  const active = list.filter(s => Date.now()-s.lastActive < 7*864e5).length;
+  const avg = list.length ? Math.round(list.reduce((a,s)=>a+s.mastery,0)/list.length) : 0;
+  let sort = 'active';
+  const draw = () => {
+    const q = ($app.querySelector('#sq')?.value || '').trim().toLowerCase();
+    const rows = list.filter(s => !q || (s.name+' '+s.email).toLowerCase().includes(q))
+      .sort((a,b) => sort==='mastery' ? b.mastery-a.mastery : sort==='name' ? (a.name||a.email).localeCompare(b.name||b.email,'he') : b.lastActive-a.lastActive);
+    $app.querySelector('#rows').innerHTML = rows.length ? rows.map(s => `<a class="topic" href="#student-${s.id}">
+      <span class="n">${esc((s.name||s.email).slice(0,1).toUpperCase())}</span>
+      <span class="t"><b>${esc(s.name||s.email)}</b><span class="d">${s.answered} שאלות · ${s.attempts} תרגולים · ${agoTxt(s.lastActive)}</span>${barHTML(s.mastery)}</span>
+      <span class="pill ${tone(s.mastery)}">${s.mastery}%</span></a>`).join('') : '<p class="lede">אין חניכים להצגה.</p>';
+  };
+  $app.querySelector('main').innerHTML = `
+    <div class="stats3"><div><b>${list.length}</b><span>חניכים</span></div><div><b>${active}</b><span>פעילים השבוע</span></div><div><b>${avg}%</b><span>שליטה ממוצעת</span></div></div>
+    <input class="search" id="sq" type="search" placeholder="חיפוש לפי שם או מייל" autocomplete="off">
+    <div class="seg" id="sort"><button data-k="active" class="on">פעילות אחרונה</button><button data-k="mastery">שליטה</button><button data-k="name">שם</button></div>
+    <div class="topics" id="rows"></div>`;
+  $app.querySelector('#sq').oninput = draw;
+  $app.querySelectorAll('#sort button').forEach(b => b.onclick = () => { sort = b.dataset.k; $app.querySelectorAll('#sort button').forEach(x=>x.classList.toggle('on',x===b)); draw() });
+  draw();
+}
+async function renderStudent(id){
+  $app.innerHTML = appbar('חניך','instructor') + `<main class="sheet"><p class="lede">טוען…</p></main>`;
+  let d; try { d = await api('/api/instructor/students/'+id) } catch (e) { $app.querySelector('main').innerHTML = '<p class="lede">לא נמצא.</p>'; return }
+  const s = d.student;
+  $app.querySelector('.appbar h1').textContent = s.name || s.email;
+  $app.querySelector('main').innerHTML = `<p class="lede">${esc(s.email)} · פעילות אחרונה: ${agoTxt(s.lastActive)}</p>
+    <div class="stats3"><div><b>${s.mastery}%</b><span>שליטה בחומר</span></div><div><b>${s.answered}</b><span>שאלות שנענו</span></div><div><b>${s.examsPassed}</b><span>מבחנים שעבר</span></div></div>
+    <h2 style="margin-top:22px">לפי קטגוריה</h2>
+    <div class="catlist">${d.categories.map(c => { const p = c.total ? Math.round(c.correct*100/c.total) : 0; return `<div><span>${esc(c.name)}</span><small>${c.correct}/${c.total}</small>${barHTML(p)}</div>` }).join('')}</div>
+    <h2 style="margin-top:22px">תרגולים ומבחנים</h2>
+    ${d.attempts.length ? `<div class="catlist">${d.attempts.slice(0,30).map(a => `<div><span>${esc(a.title)} · ${agoTxt(a.at)}</span><small>${a.right}/${a.total} · <b class="${a.pct>=PASS?'ok':'bad'}">${a.pct}%</b></small></div>`).join('')}</div>` : '<p class="lede">עוד לא סיים תרגול.</p>'}`;
+}
 /* ===================== QUIZ ===================== */
 function startQuiz(qs, opt){
   if (!opt.mount){ $app.innerHTML = appbar(opt.title, opt.back) + `<main class="sheet"><div id="qz"></div></main>` }
@@ -3279,17 +3503,22 @@ function startQuiz(qs, opt){
     box.innerHTML = `
       <div class="qhead"><span>שאלה <span class="mono">${i+1}/${items.length}</span></span><span class="qchip">${opt.kind==='topic'?CATS[it.cat]:topicById(it.topic).title}</span></div>
       ${barHTML(Math.round(i/items.length*100)).replace(/class="(good|mid|low)"/,'style="background:var(--blue)" class=""')}
+      ${qImg(it.id)?`<button class="qimg" data-q="${it.id}"><img src="images/${qImg(it.id)}" alt=""><span class="cap" hidden></span></button>`:''}
       <p class="qtext">${it.q}</p>
       <div class="opts">${it.order.map((o,k)=>`<button class="opt" data-o="${o}"><span class="k">${LETTERS[k]}</span><span>${it.opts[o]}</span></button>`).join('')}</div>
       <div id="after"></div>`;
     box.querySelectorAll('.opt').forEach(b=>b.onclick=()=>answer(it,+b.dataset.o));
+    const qi = box.querySelector('.qimg');
+    if (qi) qi.onclick = () => openViewer([[qImg(it.id), qi.querySelector('.cap').hidden ? '' : qCap(it.id)]], 0);
   }
   function answer(it,o){
-    const ok=o===0; log.push({it,o,ok}); qstate[it.id]=ok?1:0; saveQ();
+    const ok=o===0; log.push({it,o,ok}); qstate[it.id]=ok?1:0; qtime[it.id]=Date.now(); saveQ();
     box.querySelectorAll('.opt').forEach(b=>{ b.disabled=true; const v=+b.dataset.o;
       if(opt.instant){ if(v===0) b.classList.add('right'); else if(v===o) b.classList.add('wrong') }
       else if(v===o) b.classList.add('picked'); });
     const after=box.querySelector('#after');
+    const cap = box.querySelector('.qimg .cap');
+    if (opt.instant && cap){ cap.textContent = qCap(it.id); cap.hidden = !cap.textContent }
     if (opt.instant){
       after.innerHTML = `<div class="explain"><b class="${ok?'good':'low'}">${ok?'נכון':'לא נכון'}</b>${it.e}</div>
         <div class="cta"><button class="btn wide" id="next">${i+1<items.length?'השאלה הבאה':'לתוצאות'}</button></div>`;
@@ -3300,7 +3529,7 @@ function startQuiz(qs, opt){
     const right=log.filter(l=>l.ok).length, pct=Math.round(right/log.length*100);
     if (opt.kind==='topic'){ best[opt.topic]=Math.max(best[opt.topic]||0,pct); store.set('best2',best) }
     if (opt.kind!=='topic'){
-      const d=new Date(); hist.unshift({title:opt.title, date:`${d.getDate()}.${d.getMonth()+1}`, n:log.length, right, pct}); hist=hist.slice(0,20); store.set('history',hist);
+      const d=new Date(); hist.unshift({id:Date.now()+'-'+Math.floor(Math.random()*1e5), kind:opt.kind, at:Date.now(), title:opt.title, date:`${d.getDate()}.${d.getMonth()+1}`, n:log.length, right, pct}); hist=hist.slice(0,20); store.set('history',hist); syncProgress();
     }
     renderResults(log, opt);
   }
@@ -3548,6 +3777,7 @@ function renderNumbers(){
 
 
 route();
+ensureAccount().then(ok => { if (!ok) return; if (store.get('owner', null) !== acct.user.id) onSignedIn(acct.user); return syncProgress().then(route) });
 </script>
 
 </body></html>

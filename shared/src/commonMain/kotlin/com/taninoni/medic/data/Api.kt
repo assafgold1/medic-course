@@ -22,7 +22,7 @@ class ApiException(message: String) : Exception(message)
 class Api(private val baseUrl: () -> String) {
     val json = Json { ignoreUnknownKeys = true; explicitNulls = false }
 
-    private val client = HttpClient {
+    private val client = com.taninoni.medic.pinnedHttpClient {
         install(ContentNegotiation) { json(json) }
         install(HttpTimeout) {
             connectTimeoutMillis = 5_000
@@ -49,15 +49,21 @@ class Api(private val baseUrl: () -> String) {
 
     suspend fun content(): Content = client.get(url("/api/content")).ok()
 
+    suspend fun login(email: String, password: String): AuthResponse =
+        client.post(url("/api/auth/login")) {
+            contentType(ContentType.Application.Json); setBody(LoginRequest(email, password))
+        }.ok()
+
     suspend fun register(email: String, password: String, name: String): AuthResponse =
         client.post(url("/api/auth/register")) {
             contentType(ContentType.Application.Json); setBody(RegisterRequest(email, password, name))
         }.ok()
 
-    suspend fun login(email: String, password: String): AuthResponse =
-        client.post(url("/api/auth/login")) {
-            contentType(ContentType.Application.Json); setBody(LoginRequest(email, password))
-        }.ok()
+    suspend fun students(token: String): List<StudentSummary> =
+        client.get(url("/api/instructor/students")) { bearerAuth(token) }.ok()
+
+    suspend fun student(token: String, id: Long): StudentDetail =
+        client.get(url("/api/instructor/students/$id")) { bearerAuth(token) }.ok()
 
     suspend fun logout(token: String) {
         runCatching { client.post(url("/api/auth/logout")) { bearerAuth(token) } }

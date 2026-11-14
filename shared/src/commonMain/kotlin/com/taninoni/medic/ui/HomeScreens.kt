@@ -74,7 +74,7 @@ fun HomeScreen(model: AppModel, nav: Nav) {
                     Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
                         Text("השליטה שלך בחומר", color = Color.White, fontSize = 19.sp, fontWeight = FontWeight.Bold)
                         Text("$right מתוך ${all.size} שאלות נענו נכון לאחרונה", color = Color.White.copy(.85f), fontSize = 14.sp)
-                        Text(model.user?.let { "מחובר: ${it.name.ifBlank { it.email }} · ${model.syncMessage}" } ?: "לא מחובר · התחבר לסנכרון ›",
+                        Text(model.user?.let { "שלום, ${it.name.ifBlank { it.email }}" } ?: "",
                             color = Color.White.copy(.85f), fontSize = 13.sp, modifier = Modifier.clickable { nav.go(Screen.Account) })
                     }
                 }

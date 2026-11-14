@@ -8,7 +8,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -34,6 +37,8 @@ sealed interface Screen {
     data object Reference : Screen
     data object Account : Screen
     data object Settings : Screen
+    data object Instructor : Screen
+    data class Student(val id: Long) : Screen
 }
 
 /** Simple back stack. [back] returns false when already at the home screen. */
@@ -71,6 +76,8 @@ fun App() {
     val model = remember { AppModel(scope) }
     val nav = remember { Nav() }
     LaunchedEffect(Unit) { model.load() }
+    var splash by remember { mutableStateOf(true) }
+    LaunchedEffect(model.user == null) { if (model.user == null) nav.home() }
     AppBack.handler = { if (ViewerState.isOpen) { ViewerState.close(); true } else nav.back() }
 
     MedicTheme(model.themeMode) {
@@ -82,6 +89,9 @@ fun App() {
             Box(Modifier.fillMaxSize().background(Pal.paper)) {
                 if (model.content == null) {
                     CircularProgressIndicator(Modifier.align(Alignment.Center), color = Pal.blue)
+                } else if (model.user == null) {
+                    // Sign-in is required: instructors follow each student's progress.
+                    LoginScreen(model)
                 } else CompositionLocalProvider(LocalBottomInset provides if (nav.onTab) TAB_BAR_SPACE else 0.dp) {
                     when (val s = nav.current) {
                         Screen.Home -> HomeScreen(model, nav)
@@ -93,10 +103,13 @@ fun App() {
                         Screen.Reference -> ReferenceScreen(model, nav)
                         Screen.Account -> AccountScreen(model, nav)
                         Screen.Settings -> SettingsScreen(model, nav)
+                        Screen.Instructor -> InstructorScreen(model, nav)
+                        is Screen.Student -> StudentScreen(model, nav, s.id)
                     }
                     if (nav.onTab) TabBar(nav, Modifier.align(Alignment.BottomCenter))
                     ImageViewerHost()
                 }
+                if (splash) SplashScreen(ready = { model.content != null }) { splash = false }
             }
         }
     }

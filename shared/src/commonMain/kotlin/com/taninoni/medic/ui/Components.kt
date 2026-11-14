@@ -1,6 +1,10 @@
 package com.taninoni.medic.ui
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
+import com.taninoni.medic.res.Res
+import com.taninoni.medic.res.uh_icon
+import org.jetbrains.compose.resources.painterResource
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -209,8 +213,8 @@ fun Radar(labels: List<String>, values: List<Int>, modifier: Modifier = Modifier
         drawPath(poly { r / 2 }, Color.White.copy(alpha = .35f), style = Stroke(1.dp.toPx()))
         for (k in 0 until n) drawLine(Color.White.copy(alpha = .5f), c, pt(k, r), 1.dp.toPx())
         val data = poly { k -> maxOf(4f, r * values[k] / 100f) }
-        drawPath(data, Color(0xFF0B33A8).copy(alpha = .55f))
-        drawPath(data, Color(0xFF0B2E9A), style = Stroke(4.dp.toPx(), join = StrokeJoin.Round))
+        drawPath(data, Color(0xFF8A3206).copy(alpha = .55f))
+        drawPath(data, Color(0xFF7A2C05), style = Stroke(4.dp.toPx(), join = StrokeJoin.Round))
         for (k in 0 until n) {
             val layout = measurer.measure(labels[k], labelStyle)
             val o = pt(k, r + 18.dp.toPx())
@@ -228,7 +232,7 @@ fun Radar(labels: List<String>, values: List<Int>, modifier: Modifier = Modifier
 fun Logo(size: Dp = 46.dp) {
     val p = Pal
     Box(Modifier.size(size).clip(CircleShape).background(Color.White), contentAlignment = Alignment.Center) {
-        Icon(Icons.pulse, null, tint = p.bandA, modifier = Modifier.size(size * .6f))
+        Image(painterResource(Res.drawable.uh_icon), "מסלול חובש", Modifier.size(size * .72f))
     }
 }
 

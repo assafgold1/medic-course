@@ -17,8 +17,9 @@ android {
         applicationId = "com.taninoni.medic"
         minSdk = 26
         targetSdk = 37
-        versionCode = 2
-        versionName = "2.0"
+        // Release scripts pass -PversionCode=yyMMddHH so every upload gets a higher code.
+        versionCode = (project.findProperty("versionCode") as String?)?.toInt() ?: 2
+        versionName = (project.findProperty("versionName") as String?) ?: "2.0"
     }
     signingConfigs {
         if (keystoreFile.exists()) create("release") {
@@ -31,6 +32,7 @@ android {
     buildTypes {
         release {
             isMinifyEnabled = false
+            ndk { debugSymbolLevel = "SYMBOL_TABLE" }
             if (keystoreFile.exists()) signingConfig = signingConfigs.getByName("release")
         }
     }

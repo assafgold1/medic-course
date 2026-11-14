@@ -30,17 +30,21 @@ data class Topic(
 
 /** A learning image from the course decks; [file] is under composeResources/files/images. */
 @Serializable
-data class TopicImage(val file: String, val caption: String)
+data class TopicImage(val file: String, val caption: String, val spots: List<Spot> = emptyList())
+
+/** A tappable point on an anatomy image; [x], [y] are percentages of its width and height. */
+@Serializable
+data class Spot(val x: Float, val y: Float, val name: String, val info: String)
 
 @Serializable
 data class Num(val value: String, val label: String)
 
 @Serializable
-data class Section(val title: String, val steps: Boolean = false, val items: List<String>)
+data class Section(val title: String, val steps: Boolean = false, val items: List<String>, val images: List<String> = emptyList())
 
 /** [options] always lists the correct answer first; the UI shuffles them. */
 @Serializable
-data class Question(val id: String, val q: String, val options: List<String>, val explanation: String)
+data class Question(val id: String, val q: String, val options: List<String>, val explanation: String, val image: String? = null)
 
 @Serializable
 data class Reference(val compare: Compare, val general: List<GeneralRow>)
@@ -81,7 +85,21 @@ data class Progress(
 )
 
 @Serializable
-data class UserDto(val id: Long, val email: String, val name: String)
+data class UserDto(val id: Long, val email: String, val name: String, val instructor: Boolean = false)
+
+@Serializable
+data class StudentSummary(
+    val id: Long, val name: String, val email: String,
+    val answered: Int, val correct: Int, val mastery: Int,
+    val attempts: Int, val examsPassed: Int, val lastExamPct: Int? = null,
+    val lastActive: Long = 0, val joined: Long = 0,
+)
+
+@Serializable
+data class CategoryProgress(val id: String, val name: String, val correct: Int, val answered: Int, val total: Int)
+
+@Serializable
+data class StudentDetail(val student: StudentSummary, val categories: List<CategoryProgress>, val attempts: List<Attempt>)
 
 @Serializable
 data class UpdateProfileRequest(val name: String)
@@ -93,13 +111,13 @@ data class ChangePasswordRequest(val current: String, val new: String)
 data class DeleteAccountRequest(val password: String)
 
 @Serializable
-data class AuthResponse(val token: String, val user: UserDto)
+data class AuthResponse(val token: String, val user: UserDto, val created: Boolean = false)
 
 @Serializable
 data class RegisterRequest(val email: String, val password: String, val name: String = "")
 
 @Serializable
-data class LoginRequest(val email: String, val password: String)
+data class LoginRequest(val email: String, val password: String, val name: String = "")
 
 @Serializable
 data class ErrorDto(val error: String)

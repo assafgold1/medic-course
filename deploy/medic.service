@@ -1,0 +1,22 @@
+# systemd unit for the medic server on the Linux host (installed by deploy/deploy-server.sh).
+[Unit]
+Description=Medic course server (Ktor)
+After=network.target
+
+[Service]
+User=medic
+WorkingDirectory=/opt/medic
+Environment=HOST=127.0.0.1
+Environment=PORT=8787
+Environment=MEDIC_DB=/opt/medic/data/medic.db
+Environment=JAVA_OPTS=-Xmx256m
+ExecStart=/opt/medic/app/bin/server
+Restart=on-failure
+RestartSec=3
+NoNewPrivileges=true
+ProtectSystem=strict
+ReadWritePaths=/opt/medic/data
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

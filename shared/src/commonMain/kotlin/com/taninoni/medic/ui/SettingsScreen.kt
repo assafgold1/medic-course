@@ -53,8 +53,12 @@ fun SettingsScreen(model: AppModel, nav: Nav) {
                     LinkRow(
                         Icons.user,
                         title = user?.let { it.name.ifBlank { it.email } } ?: "חשבון וסנכרון",
-                        subtitle = if (user != null) "מחובר · ${model.syncMessage.ifBlank { "ההתקדמות מסתנכרנת" }}" else "לא מחובר. התחבר כדי לשמור התקדמות בכל המכשירים",
+                        subtitle = "${user?.email.orEmpty()} · ${model.syncMessage.ifBlank { "ההתקדמות מסתנכרנת" }}",
                     ) { nav.go(Screen.Account) }
+                }
+
+                if (model.user?.instructor == true) Group("מדריכים") {
+                    LinkRow(Icons.special, title = "התקדמות החניכים", subtitle = "מי תרגל, כמה ובאילו נושאים") { nav.go(Screen.Instructor) }
                 }
 
                 Group("תצוגה") {

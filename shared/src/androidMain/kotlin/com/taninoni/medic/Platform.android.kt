@@ -11,3 +11,7 @@ actual object Sound {
     actual fun breath() { tone?.startTone(ToneGenerator.TONE_PROP_ACK, 400) }
     actual fun alarm() { tone?.startTone(ToneGenerator.TONE_CDMA_ALERT_CALL_GUARD, 700) }
 }
+
+/** Platform HTTP client. HTTPS only (res/xml/network_security.xml). */
+actual fun pinnedHttpClient(config: io.ktor.client.HttpClientConfig<*>.() -> Unit): io.ktor.client.HttpClient =
+    io.ktor.client.HttpClient(io.ktor.client.engine.okhttp.OkHttp) { config() }

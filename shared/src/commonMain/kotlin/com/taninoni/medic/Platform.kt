@@ -2,10 +2,12 @@ package com.taninoni.medic
 
 /**
  * The server address. Fixed in code; users can't change it in the app.
- * localhost works on the iOS simulator, and on Android after `adb reverse tcp:8787 tcp:8787`.
- * Change it here to the real server address before a release.
+ * uh.taninoni.com has a Let's Encrypt certificate (issued on kali via Cloudflare DNS, renews automatically).
  */
-const val SERVER_URL = "http://localhost:8787"
+const val SERVER_URL = "https://uh.taninoni.com"
+
+/** Platform HTTP client (OkHttp on Android, Darwin on iOS). */
+expect fun pinnedHttpClient(config: io.ktor.client.HttpClientConfig<*>.() -> Unit): io.ktor.client.HttpClient
 
 expect fun nowMillis(): Long
 

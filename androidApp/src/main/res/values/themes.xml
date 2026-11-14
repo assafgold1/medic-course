@@ -2,5 +2,5 @@
     <style name="Theme.Medic" parent="android:Theme.Material.Light.NoActionBar">
         <item name="android:windowBackground">@color/brand</item>
     </style>
-    <color name="brand">#1D5AE6</color>
+    <color name="brand">#F26922</color>
 </resources>

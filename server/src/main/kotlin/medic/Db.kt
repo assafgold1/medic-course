@@ -138,6 +138,23 @@ class Db(path: String) {
             ps.executeQuery().use { r -> if (r.next()) UserDto(r.getLong(1), r.getString(2), r.getString(3)) else null }
         }
 
+    /** Every account with its creation time and stored progress (for the instructors' view). */
+    @Synchronized
+    fun allUsers(): List<Triple<UserDto, Long, Progress>> =
+        conn.createStatement().use { st ->
+            st.executeQuery("SELECT u.id,u.email,u.name,u.created_at,p.data FROM users u LEFT JOIN progress p ON p.user_id=u.id ORDER BY u.name, u.email").use { r ->
+                buildList {
+                    while (r.next()) add(Triple(
+                        UserDto(r.getLong(1), r.getString(2), r.getString(3)), r.getLong(4),
+                        r.getString(5)?.let { json.decodeFromString<Progress>(it) } ?: Progress(),
+                    ))
+                }
+            }
+        }
+
+    @Synchronized
+    fun userExists(email: String): Boolean = findUser(email) != null
+
     private fun findUser(email: String): UserDto? =
         conn.prepareStatement("SELECT id,email,name FROM users WHERE email=?").use { ps ->
             ps.setString(1, email)

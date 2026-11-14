@@ -6,10 +6,30 @@ import kotlinx.serialization.Serializable
 data class RegisterRequest(val email: String, val password: String, val name: String = "")
 
 @Serializable
-data class LoginRequest(val email: String, val password: String)
+data class LoginRequest(val email: String, val password: String, val name: String = "")
 
 @Serializable
-data class UserDto(val id: Long, val email: String, val name: String)
+/** [instructor] users (emails in MEDIC_INSTRUCTORS) can see every student's progress. */
+@OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
+data class UserDto(
+    val id: Long, val email: String, val name: String,
+    @kotlinx.serialization.EncodeDefault val instructor: Boolean = false,
+)
+
+/** One row in the instructors' list. [mastery] = share of all course questions last answered correctly. */
+@Serializable
+data class StudentSummary(
+    val id: Long, val name: String, val email: String,
+    val answered: Int, val correct: Int, val mastery: Int,
+    val attempts: Int, val examsPassed: Int, val lastExamPct: Int? = null,
+    val lastActive: Long = 0, val joined: Long = 0,
+)
+
+@Serializable
+data class CategoryProgress(val id: String, val name: String, val correct: Int, val answered: Int, val total: Int)
+
+@Serializable
+data class StudentDetail(val student: StudentSummary, val categories: List<CategoryProgress>, val attempts: List<Attempt>)
 
 @Serializable
 data class UpdateProfileRequest(val name: String)
@@ -21,7 +41,7 @@ data class ChangePasswordRequest(val current: String, val new: String)
 data class DeleteAccountRequest(val password: String)
 
 @Serializable
-data class AuthResponse(val token: String, val user: UserDto)
+data class AuthResponse(val token: String, val user: UserDto, val created: Boolean = false)
 
 /** One answer to a question: [v] 1 = correct, 0 = wrong; [t] = epoch millis when it was answered. */
 @Serializable

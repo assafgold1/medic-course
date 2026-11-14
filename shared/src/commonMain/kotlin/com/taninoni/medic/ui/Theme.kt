@@ -28,17 +28,18 @@ data class Palette(
     fun toneSoft(p: Int) = if (p >= 80) goodSoft else if (p >= 50) midSoft else badSoft
 }
 
+// Brand orange (#F26922) on white. Token names kept from the first design: "blue" is the brand accent.
 private val Light = Palette(
-    bandA = Color(0xFF1D5AE6), bandB = Color(0xFF4C8BF8), blue = Color(0xFF0A4FD6), blueSoft = Color(0xFFE7EFFE),
-    paper = Color(0xFFEEF3FB), surface = Color.White, ink = Color(0xFF16213A), muted = Color(0xFF66728A),
-    line = Color(0xFFBFD2F7), hair = Color(0xFFE3EAF6),
-    good = Color(0xFF16A34A), goodSoft = Color(0xFFE3F6EA), mid = Color(0xFFE39A0B), midSoft = Color(0xFFFDF2DC),
+    bandA = Color(0xFFF26922), bandB = Color(0xFFFF8F45), blue = Color(0xFFD9520E), blueSoft = Color(0xFFFFEEE3),
+    paper = Color(0xFFFFF6F0), surface = Color.White, ink = Color(0xFF1F1A17), muted = Color(0xFF7A6A60),
+    line = Color(0xFFF6C4A6), hair = Color(0xFFF5E5DA),
+    good = Color(0xFF16A34A), goodSoft = Color(0xFFE3F6EA), mid = Color(0xFFD48806), midSoft = Color(0xFFFDF2DC),
     bad = Color(0xFFD92D2D), badSoft = Color(0xFFFBE4E4),
 )
 private val Dark = Palette(
-    bandA = Color(0xFF123A9C), bandB = Color(0xFF2A62D6), blue = Color(0xFF4D86FF), blueSoft = Color(0xFF17264A),
-    paper = Color(0xFF0A1120), surface = Color(0xFF131C2F), ink = Color(0xFFE7EDF8), muted = Color(0xFF97A3BA),
-    line = Color(0xFF2C3F66), hair = Color(0xFF22304D),
+    bandA = Color(0xFFB8460E), bandB = Color(0xFFE5651F), blue = Color(0xFFFF8A47), blueSoft = Color(0xFF3A2114),
+    paper = Color(0xFF140D09), surface = Color(0xFF20140E), ink = Color(0xFFF6ECE6), muted = Color(0xFFBFA595),
+    line = Color(0xFF5A3524), hair = Color(0xFF3A261B),
     good = Color(0xFF3DD47A), goodSoft = Color(0xFF123523), mid = Color(0xFFF2B73F), midSoft = Color(0xFF3A2C0E),
     bad = Color(0xFFFF6B6B), badSoft = Color(0xFF3D1717),
 )

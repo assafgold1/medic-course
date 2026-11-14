@@ -2,6 +2,9 @@ package com.taninoni.medic.ui
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -63,7 +66,7 @@ private fun rememberTopicBitmap(file: String): ImageBitmap? {
 }
 
 @Composable
-private fun TopicBitmap(file: String, modifier: Modifier, scale: ContentScale) {
+internal fun TopicBitmap(file: String, modifier: Modifier, scale: ContentScale) {
     val bitmap = rememberTopicBitmap(file)
     Box(modifier, contentAlignment = Alignment.Center) {
         if (bitmap != null) Image(bitmap, null, Modifier.fillMaxSize(), contentScale = scale)
@@ -130,3 +133,70 @@ fun ImageViewerHost() {
         ) { Text("✕", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold) }
     }
 }
+
+/**
+ * The question's illustration. Before answering only the picture is shown (its caption could give the
+ * answer away); after answering in practice mode the caption appears. Tap opens it full screen.
+ */
+@Composable
+fun QuestionImage(img: TopicImage, showCaption: Boolean) {
+    val p = Pal
+    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(p.paper).clickable { ViewerState.show(listOf(if (showCaption) img else img.copy(caption = "")), 0) }) {
+        TopicBitmap(img.file, Modifier.fillMaxWidth().height(190.dp).background(Color.White), ContentScale.Fit)
+        if (showCaption) Text(img.caption, color = p.muted, fontSize = 13.5.sp, lineHeight = 19.sp, modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp))
+    }
+}
+
+/**
+ * An image inside the study text. Anatomy images with points show numbered markers:
+ * tapping one highlights it and shows the part's name and explanation below the image.
+ */
+@Composable
+fun InlineImage(img: TopicImage) {
+    val p = Pal
+    var selected by remember(img.file) { mutableStateOf<Int?>(null) }
+    val bitmap = rememberTopicBitmapPublic(img.file)
+    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(p.paper)) {
+        val ratio = bitmap?.let { it.width.toFloat() / it.height } ?: 1.4f
+        androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxWidth().aspectRatio(ratio).background(Color.White)) {
+            if (bitmap != null) Image(bitmap, null, Modifier.fillMaxSize().clickable { ViewerState.show(listOf(img), 0) }, contentScale = ContentScale.FillBounds)
+            val w = maxWidth; val h = maxHeight
+            img.spots.forEachIndexed { i, s ->
+                val on = selected == i
+                val size = if (on) 30.dp else 26.dp
+                Box(
+                    Modifier.offset(x = w * (s.x / 100f) - size / 2, y = h * (s.y / 100f) - size / 2).size(size).clip(CircleShape)
+                        .background(if (on) p.blue else Color.White).border(2.5.dp, p.blue, CircleShape)
+                        .clickable { selected = if (on) null else i },
+                    contentAlignment = Alignment.Center,
+                ) { Text("${i + 1}", color = if (on) Color.White else p.blue, fontSize = 12.sp, fontWeight = FontWeight.Bold) }
+            }
+        }
+        val sel = selected?.let { img.spots.getOrNull(it) }
+        Column(Modifier.padding(horizontal = 16.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            if (sel != null) {
+                Text(sel.name, color = p.blue, fontSize = 17.sp, fontWeight = FontWeight.ExtraBold)
+                Text(sel.info, color = p.ink, fontSize = 15.sp, lineHeight = 22.sp)
+            } else {
+                Text(img.caption, color = p.muted, fontSize = 14.sp, lineHeight = 20.sp)
+                if (img.spots.isNotEmpty()) Text("הקש על המספרים כדי לראות את שם החלק והסבר", color = p.blue, fontSize = 13.5.sp, fontWeight = FontWeight.SemiBold)
+            }
+        }
+        if (img.spots.isNotEmpty()) {
+            androidx.compose.foundation.layout.FlowRow(
+                Modifier.fillMaxWidth().padding(start = 12.dp, end = 12.dp, bottom = 12.dp),
+                horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                img.spots.forEachIndexed { i, s ->
+                    val on = selected == i
+                    Text("${i + 1}. ${s.name}", color = if (on) Color.White else p.ink, fontSize = 13.sp,
+                        modifier = Modifier.clip(RoundedCornerShape(50)).background(if (on) p.blue else p.surface)
+                            .clickable { selected = if (on) null else i }.padding(horizontal = 10.dp, vertical = 6.dp))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun rememberTopicBitmapPublic(file: String) = rememberTopicBitmap(file)

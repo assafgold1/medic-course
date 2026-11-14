@@ -88,7 +88,8 @@ private fun Learn(t: Topic, goTab: (String) -> Unit) {
             if (row.size == 1) Spacer(Modifier.weight(1f))
         }
     }
-    ImageGallery(t.images)
+    val placed = t.sections.flatMap { it.images }.toSet()
+    ImageGallery(t.images.filter { it.file !in placed })
     t.sections.forEach { s ->
         Column(Modifier.padding(top = 14.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text(s.title, color = p.ink, fontSize = 19.sp, fontWeight = FontWeight.ExtraBold)
@@ -104,6 +105,7 @@ private fun Learn(t: Topic, goTab: (String) -> Unit) {
                     Text(line, color = p.ink, fontSize = 16.sp, lineHeight = 25.sp, modifier = Modifier.weight(1f))
                 }
             }
+            s.images.forEach { f -> t.images.firstOrNull { it.file == f }?.let { InlineImage(it) } }
         }
     }
     VSpace(12.dp)

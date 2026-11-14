@@ -175,15 +175,7 @@ private fun Stat(value: String, label: String, modifier: Modifier) {
 fun AccountScreen(model: AppModel, nav: Nav) {
     val p = Pal
     val scope = rememberCoroutineScope()
-    var mode by remember { mutableStateOf("login") }
-    val emailState = rememberTextFieldState()
-    val passwordState = rememberTextFieldState()
-    val nameState = rememberTextFieldState()
-    val email = emailState.text.toString()
-    val password = passwordState.text.toString()
-    val name = nameState.text.toString()
-    var busy by remember { mutableStateOf(false) }
-    var error by remember { mutableStateOf<String?>(null) }
+    val welcome = model.justCreated
 
     Column(Modifier.fillMaxSize()) {
         AppBar("חשבון וסנכרון") { nav.back() }
@@ -191,6 +183,7 @@ fun AccountScreen(model: AppModel, nav: Nav) {
             Sheet {
                 val user = model.user
                 if (user != null) {
+                    if (welcome) Text("נוצר לך חשבון חדש. ההתקדמות שלך תישמר ותסתנכרן בין המכשירים.", color = p.good, fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
                     Panel {
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                             Box(Modifier.size(54.dp).clip(CircleShape).background(p.blue), contentAlignment = Alignment.Center) {
@@ -199,13 +192,14 @@ fun AccountScreen(model: AppModel, nav: Nav) {
                             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                                 Text(user.name.ifBlank { "משתמש" }, color = p.ink, fontSize = 18.sp, fontWeight = FontWeight.Bold)
                                 Text(user.email, color = p.muted, fontSize = 14.sp)
+                                if (user.instructor) Pill("מדריך", p.blue, p.blueSoft)
                             }
                         }
                         val state = model.syncState
                         Text(
                             when (state) {
                                 AppModel.SyncState.Working -> "מסנכרן…"
-                                AppModel.SyncState.Ok -> "✓ ההתקדמות מסונכרנת עם השרת"
+                                AppModel.SyncState.Ok -> "✓ ההתקדמות נשמרת בשרת"
                                 AppModel.SyncState.Error -> "שגיאת סנכרון: ${model.syncMessage}"
                                 AppModel.SyncState.Idle -> "ההתקדמות תסונכרן בסוף כל תרגול"
                             },
@@ -215,21 +209,6 @@ fun AccountScreen(model: AppModel, nav: Nav) {
                     }
                     PrimaryButton("סנכרן עכשיו", Modifier.fillMaxWidth()) { scope.launch { model.sync() } }
                     UserSettings(model)
-                } else {
-                    Text("התחברות שומרת את ההתקדמות והמבחנים בשרת, כדי שיהיו זמינים בכל מכשיר.", color = p.muted, fontSize = 15.sp, lineHeight = 22.sp)
-                    Segmented(listOf("login" to "התחברות", "register" to "הרשמה"), mode) { mode = it; error = null }
-                    if (mode == "register") Field("שם", nameState, KeyboardType.Text)
-                    Field("מייל", emailState, KeyboardType.Email)
-                    Field("סיסמה (לפחות 8 תווים)", passwordState, KeyboardType.Password, secret = true)
-                    error?.let { Text(it, color = p.bad) }
-                    PrimaryButton(if (busy) "רגע…" else if (mode == "login") "התחבר" else "צור חשבון", Modifier.fillMaxWidth(), enabled = !busy && email.isNotBlank() && password.isNotBlank()) {
-                        busy = true; error = null
-                        scope.launch {
-                            runCatching { if (mode == "login") model.login(email, password) else model.register(email, password, name) }
-                                .onFailure { error = (it as? com.taninoni.medic.data.ApiException)?.message ?: "אין חיבור לשרת. נסה שוב בעוד רגע." }
-                            busy = false
-                        }
-                    }
                 }
                 BottomSpace(40.dp)
             }
@@ -263,19 +242,20 @@ private fun UserSettings(model: AppModel) {
         }
     }
 
+    val guest = false
     SectionTitle("הגדרות משתמש", Modifier.padding(top = 12.dp))
     message?.let { (ok, text) -> Text(text, color = if (ok) p.good else p.bad, fontWeight = FontWeight.SemiBold) }
 
-    SectionRow("שם תצוגה", model.user?.name?.ifBlank { null } ?: "לא הוגדר", open == "name") { toggle("name") }
-    if (open == "name") {
+    if (!guest) SectionRow("שם תצוגה", model.user?.name?.ifBlank { null } ?: "לא הוגדר", open == "name") { toggle("name") }
+    if (!guest && open == "name") {
         Field("שם", nameState, KeyboardType.Text)
         PrimaryButton(if (busy) "רגע…" else "שמור שם", Modifier.fillMaxWidth(), enabled = !busy && nameState.text.isNotBlank()) {
             run("השם עודכן") { model.updateName(nameState.text.toString()) }
         }
     }
 
-    SectionRow("שינוי סיסמה", "שאר המכשירים יתנתקו מהחשבון", open == "password") { toggle("password") }
-    if (open == "password") {
+    if (!guest) SectionRow("שינוי סיסמה", "שאר המכשירים יתנתקו מהחשבון", open == "password") { toggle("password") }
+    if (!guest && open == "password") {
         Field("סיסמה נוכחית", currentState, KeyboardType.Password, secret = true)
         Field("סיסמה חדשה (לפחות 8 תווים)", newState, KeyboardType.Password, secret = true)
         PrimaryButton(if (busy) "רגע…" else "שנה סיסמה", Modifier.fillMaxWidth(), enabled = !busy && currentState.text.isNotEmpty() && newState.text.length >= 8) {
@@ -286,15 +266,15 @@ private fun UserSettings(model: AppModel) {
         }
     }
 
-    GhostButton("התנתק", Modifier.fillMaxWidth()) { model.logout() }
+    if (!guest) GhostButton("התנתק", Modifier.fillMaxWidth()) { model.logout() }
 
-    SectionRow("מחיקת חשבון", "מוחק את החשבון ואת ההתקדמות השמורה בשרת", open == "delete", danger = true) { toggle("delete") }
+    SectionRow("מחיקת חשבון", "מוחק את החשבון ואת כל ההתקדמות", open == "delete", danger = true) { toggle("delete") }
     if (open == "delete") {
-        Text("ההתקדמות במכשיר הזה נשארת. אי אפשר לבטל את המחיקה.", color = p.muted, fontSize = 14.sp)
-        Field("סיסמה לאישור", deleteState, KeyboardType.Password, secret = true)
+        Text("החשבון וכל ההתקדמות יימחקו מהשרת ומהמכשיר הזה. אי אפשר לבטל את המחיקה.", color = p.muted, fontSize = 14.sp)
+        if (!guest) Field("סיסמה לאישור", deleteState, KeyboardType.Password, secret = true)
         Box(
-            Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(if (deleteState.text.isNotEmpty() && !busy) p.bad else p.bad.copy(alpha = .4f))
-                .clickable(enabled = deleteState.text.isNotEmpty() && !busy) { confirmDelete = true }.padding(vertical = 15.dp),
+            Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(if ((guest || deleteState.text.isNotEmpty()) && !busy) p.bad else p.bad.copy(alpha = .4f))
+                .clickable(enabled = (guest || deleteState.text.isNotEmpty()) && !busy) { confirmDelete = true }.padding(vertical = 15.dp),
             contentAlignment = Alignment.Center,
         ) { Text("מחק את החשבון", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 17.sp) }
     }
@@ -303,7 +283,7 @@ private fun UserSettings(model: AppModel) {
         AlertDialog(
             onDismissRequest = { confirmDelete = false },
             title = { Text("למחוק את החשבון?") },
-            text = { Text("החשבון ${model.user?.email.orEmpty()} וכל ההתקדמות השמורה בשרת יימחקו לצמיתות.") },
+            text = { Text(if (guest) "החשבון וכל ההתקדמות יימחקו לצמיתות." else "החשבון ${model.user?.email.orEmpty()} וכל ההתקדמות יימחקו לצמיתות.") },
             confirmButton = {
                 TextButton(onClick = {
                     confirmDelete = false
@@ -333,7 +313,7 @@ private fun SectionRow(title: String, subtitle: String, expanded: Boolean, dange
 }
 
 @Composable
-private fun Field(label: String, state: TextFieldState, type: KeyboardType, secret: Boolean = false) {
+internal fun Field(label: String, state: TextFieldState, type: KeyboardType, secret: Boolean = false) {
     val options = KeyboardOptions(keyboardType = type, autoCorrectEnabled = false, capitalization = KeyboardCapitalization.None)
     if (secret) {
         OutlinedSecureTextField(state = state, label = { Text(label) }, keyboardOptions = options, modifier = Modifier.fillMaxWidth())

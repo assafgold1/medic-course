@@ -88,6 +88,10 @@ fun QuizScreen(model: AppModel, nav: Nav, s: Screen.Quiz) {
                         color = p.blue, fontSize = 12.5.sp, fontWeight = FontWeight.SemiBold)
                 }
                 ProgressBar(index.toFloat() / items.size, p.blue)
+                item.question.image?.let { file ->
+                    val img = item.topic.images.firstOrNull { it.file == file } ?: com.taninoni.medic.data.TopicImage(file, "")
+                    QuestionImage(img, showCaption = cfg.instant && picked != null)
+                }
                 Text(item.question.q, color = p.ink, fontSize = 20.sp, fontWeight = FontWeight.SemiBold, lineHeight = 30.sp, modifier = Modifier.padding(top = 6.dp, bottom = 4.dp))
                 orders[index].forEachIndexed { k, o ->
                     val chosen = picked

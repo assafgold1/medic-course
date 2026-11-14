@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Original mark for "מסלול חובש": orange badge, white medical cross, heartbeat line through it. -->
+  <rect x="16" y="16" width="480" height="480" rx="120" fill="#F26922"/>
+  <path d="M206 96h100a14 14 0 0 1 14 14v96h96a14 14 0 0 1 14 14v100a14 14 0 0 1-14 14h-96v96a14 14 0 0 1-14 14H206a14 14 0 0 1-14-14v-96H96a14 14 0 0 1-14-14V220a14 14 0 0 1 14-14h96v-96a14 14 0 0 1 14-14z" fill="#fff"/>
+  <path d="M110 272h86l26-58 40 116 32-84 18 26h90" fill="none" stroke="#F26922" stroke-width="26" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

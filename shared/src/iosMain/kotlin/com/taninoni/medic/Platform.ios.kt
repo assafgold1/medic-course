@@ -1,5 +1,6 @@
 package com.taninoni.medic
 
+
 import platform.AudioToolbox.AudioServicesPlaySystemSound
 import platform.Foundation.NSDate
 import platform.Foundation.timeIntervalSince1970
@@ -12,3 +13,6 @@ actual object Sound {
     actual fun breath() = AudioServicesPlaySystemSound(1057u)
     actual fun alarm() = AudioServicesPlaySystemSound(1005u)
 }
+
+actual fun pinnedHttpClient(config: io.ktor.client.HttpClientConfig<*>.() -> Unit): io.ktor.client.HttpClient =
+    io.ktor.client.HttpClient(io.ktor.client.engine.darwin.Darwin) { config() }
