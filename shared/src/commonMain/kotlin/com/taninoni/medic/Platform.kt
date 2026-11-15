@@ -16,4 +16,6 @@ expect object Sound {
     fun beat(accent: Boolean)
     fun breath()
     fun alarm()
+    /** Plays a short 16-bit mono PCM WAV clip (answer feedback). */
+    fun clip(wav: ByteArray)
 }

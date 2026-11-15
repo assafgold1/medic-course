@@ -86,7 +86,7 @@ fun SettingsScreen(model: AppModel, nav: Nav) {
                 }
 
                 Group("צלילים") {
-                    ToggleRow("צלילי מטרונום", "ספירת עיסויים, הנשמות והתראה כל 2 דקות.", model.soundOn) { model.updateSound(it) }
+                    ToggleRow("צלילים", "צליל הצלחה או טעות אחרי כל תשובה בתרגול, וצלילי המטרונום", model.soundOn) { model.updateSound(it) }
                 }
 
                 Group("נתונים") {

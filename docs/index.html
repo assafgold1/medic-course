@@ -3293,6 +3293,15 @@ function secImgs(t, si){
       <figcaption class="info" data-cap="${esc(c)}${spots.length?'<em>הקש על המספרים כדי לראות את שם החלק והסבר</em>':''}">${esc(c)}${spots.length?'<em>הקש על המספרים כדי לראות את שם החלק והסבר</em>':''}</figcaption>
       ${spots.length?`<div class="chips">${spots.map((sp,i)=>`<button data-s="${i}">${i+1}. ${sp.name}</button>`).join('')}</div>`:''}</figure>` }).join('');
 }
+// Success / error sound after answering in practice (docs/sounds/*.wav, same clips as the apps).
+const answerSounds = {};
+function playAnswer(ok){
+  try {
+    const k = ok ? 'correct' : 'wrong';
+    const a = answerSounds[k] || (answerSounds[k] = new Audio('sounds/' + k + '.wav'));
+    a.currentTime = 0; a.play().catch(() => {});
+  } catch (e) {}
+}
 const ALLQ = TOPICS.flatMap(t => t.quiz.map((q,i)=>({id:t.id+'#'+i, topic:t.id, cat:t.cat, q:q[0], opts:q[1], e:q[2]})));
 const topicById = id => TOPICS.find(t=>t.id===id);
 const catQ = c => ALLQ.filter(q=>q.cat===c);
@@ -3513,6 +3522,7 @@ function startQuiz(qs, opt){
   }
   function answer(it,o){
     const ok=o===0; log.push({it,o,ok}); qstate[it.id]=ok?1:0; qtime[it.id]=Date.now(); saveQ();
+    if (opt.instant && store.get('sound', true)) playAnswer(ok);
     box.querySelectorAll('.opt').forEach(b=>{ b.disabled=true; const v=+b.dataset.o;
       if(opt.instant){ if(v===0) b.classList.add('right'); else if(v===o) b.classList.add('wrong') }
       else if(v===o) b.classList.add('picked'); });

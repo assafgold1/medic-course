@@ -70,6 +70,7 @@ fun QuizScreen(model: AppModel, nav: Nav, s: Screen.Quiz) {
         if (index + 1 >= items.size) finish() else index++
     }
     LaunchedEffect(index) { scroll.scrollTo(0) }
+    LaunchedEffect(Unit) { AnswerSound.preload() }
     if (!cfg.instant) LaunchedEffect(picked) { if (picked != null) { delay(380); next() } }
 
     Column(Modifier.fillMaxSize()) {
@@ -111,6 +112,8 @@ fun QuizScreen(model: AppModel, nav: Nav, s: Screen.Quiz) {
                                 picked = o
                                 log += LogEntry(item, o)
                                 model.recordAnswer(item.id, o == 0)
+                                // In exam mode the answer stays hidden until the end, so no sound there.
+                                if (cfg.instant && model.soundOn) AnswerSound.play(o == 0)
                             }.padding(horizontal = 16.dp, vertical = 16.dp),
                         horizontalArrangement = Arrangement.spacedBy(14.dp),
                         verticalAlignment = Alignment.CenterVertically,
