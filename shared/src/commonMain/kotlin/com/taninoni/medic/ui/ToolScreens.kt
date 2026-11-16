@@ -161,7 +161,7 @@ fun MetronomeScreen(model: AppModel, nav: Nav) {
 }
 
 @Composable
-private fun Stat(value: String, label: String, modifier: Modifier) {
+internal fun Stat(value: String, label: String, modifier: Modifier) {
     val p = Pal
     Column(modifier.clip(RoundedCornerShape(18.dp)).background(p.paper).padding(vertical = 14.dp, horizontal = 8.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(2.dp)) {
         Text(value, color = p.ink, fontSize = 22.sp, fontWeight = FontWeight.SemiBold)

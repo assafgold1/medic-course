@@ -142,7 +142,7 @@ fun ImageViewerHost() {
 fun QuestionImage(img: TopicImage, showCaption: Boolean) {
     val p = Pal
     Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(p.paper).clickable { ViewerState.show(listOf(if (showCaption) img else img.copy(caption = "")), 0) }) {
-        TopicBitmap(img.file, Modifier.fillMaxWidth().height(190.dp).background(Color.White), ContentScale.Fit)
+        TopicBitmap(img.file, Modifier.fillMaxWidth().height(150.dp).background(Color.White), ContentScale.Fit)
         if (showCaption) Text(img.caption, color = p.muted, fontSize = 13.5.sp, lineHeight = 19.sp, modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp))
     }
 }
@@ -154,6 +154,7 @@ fun QuestionImage(img: TopicImage, showCaption: Boolean) {
 @Composable
 fun InlineImage(img: TopicImage) {
     val p = Pal
+    val soundOn = LocalSoundOn.current
     var selected by remember(img.file) { mutableStateOf<Int?>(null) }
     val bitmap = rememberTopicBitmapPublic(img.file)
     Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(p.paper)) {
@@ -167,7 +168,7 @@ fun InlineImage(img: TopicImage) {
                 Box(
                     Modifier.offset(x = w * (s.x / 100f) - size / 2, y = h * (s.y / 100f) - size / 2).size(size).clip(CircleShape)
                         .background(if (on) p.blue else Color.White).border(2.5.dp, p.blue, CircleShape)
-                        .clickable { selected = if (on) null else i },
+                        .clickable { selected = if (on) null else i; if (soundOn) AnswerSound.play(Sfx.TAP) },
                     contentAlignment = Alignment.Center,
                 ) { Text("${i + 1}", color = if (on) Color.White else p.blue, fontSize = 12.sp, fontWeight = FontWeight.Bold) }
             }
@@ -191,7 +192,7 @@ fun InlineImage(img: TopicImage) {
                     val on = selected == i
                     Text("${i + 1}. ${s.name}", color = if (on) Color.White else p.ink, fontSize = 13.sp,
                         modifier = Modifier.clip(RoundedCornerShape(50)).background(if (on) p.blue else p.surface)
-                            .clickable { selected = if (on) null else i }.padding(horizontal = 10.dp, vertical = 6.dp))
+                            .clickable { selected = if (on) null else i; if (soundOn) AnswerSound.play(Sfx.TAP) }.padding(horizontal = 10.dp, vertical = 6.dp))
                 }
             }
         }

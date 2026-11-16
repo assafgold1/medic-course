@@ -75,6 +75,16 @@ h3{font-size:18px}
 @keyframes sp-up{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:none}}
 @media (prefers-reduced-motion:reduce){.splash *{animation-duration:.01s!important;animation-delay:0s!important}}
 .brand .mark img{width:30px;height:30px}
+/* Calmer home and topic pages: titles only on topic rows, compact numbers list, no small print */
+.group .topic{grid-template-columns:1fr auto;padding:15px 16px;border-width:1px}
+.group .topic .n,.group .topic .d,.ghead .ic,.hbtn small{display:none!important}
+.ghead .pill.none{display:none}
+.hero .ring{width:88px!important;height:88px!important}
+.group .topic .pill.none{display:none}
+.nums{display:flex;flex-direction:column;gap:0;background:var(--paper);border-radius:16px;padding:6px 16px}
+.num{display:flex;flex-direction:row-reverse;justify-content:space-between;align-items:baseline;background:none;padding:8px 0;border-radius:0}
+.num + .num{border-top:1px solid var(--hair)}
+
 .anat{margin:14px 0 4px;background:var(--paper);border-radius:20px;overflow:hidden}
 .anat .pic{position:relative;background:#fff}
 .anat .pic img{display:block;width:100%;height:auto;cursor:zoom-in}
@@ -3293,15 +3303,15 @@ function secImgs(t, si){
       <figcaption class="info" data-cap="${esc(c)}${spots.length?'<em>הקש על המספרים כדי לראות את שם החלק והסבר</em>':''}">${esc(c)}${spots.length?'<em>הקש על המספרים כדי לראות את שם החלק והסבר</em>':''}</figcaption>
       ${spots.length?`<div class="chips">${spots.map((sp,i)=>`<button data-s="${i}">${i+1}. ${sp.name}</button>`).join('')}</div>`:''}</figure>` }).join('');
 }
-// Success / error sound after answering in practice (docs/sounds/*.wav, same clips as the apps).
+// Success / error / streak / finish sounds (docs/sounds/*.wav, same clips as the apps).
 const answerSounds = {};
-function playAnswer(ok){
+function playSfx(k){
   try {
-    const k = ok ? 'correct' : 'wrong';
     const a = answerSounds[k] || (answerSounds[k] = new Audio('sounds/' + k + '.wav'));
     a.currentTime = 0; a.play().catch(() => {});
   } catch (e) {}
 }
+const playAnswer = ok => playSfx(ok ? 'correct' : 'wrong');
 const ALLQ = TOPICS.flatMap(t => t.quiz.map((q,i)=>({id:t.id+'#'+i, topic:t.id, cat:t.cat, q:q[0], opts:q[1], e:q[2]})));
 const topicById = id => TOPICS.find(t=>t.id===id);
 const catQ = c => ALLQ.filter(q=>q.cat===c);
@@ -3505,24 +3515,31 @@ function startQuiz(qs, opt){
   const box = (opt.mount||$app).querySelector('#qz');
   if (!qs.length){ box.innerHTML = `<div class="empty">אין כרגע שאלות לתרגול כאן. כל הכבוד!</div>`; return }
   const items = qs.map(q=>({...q, order:shuffle([0,1,2,3])}));
-  let i=0; const log=[];
+  let i=0, streak=0, lastImg=null; const log=[];
   function draw(){
     if (i>=items.length) return finish();
     const it = items[i];
+    const rawImg = qImg(it.id);
+    const img = rawImg && rawImg !== lastImg ? rawImg : null;
+    lastImg = img;
     box.innerHTML = `
-      <div class="qhead"><span>שאלה <span class="mono">${i+1}/${items.length}</span></span><span class="qchip">${opt.kind==='topic'?CATS[it.cat]:topicById(it.topic).title}</span></div>
+      <div class="qhead"><span>שאלה <span class="mono">${i+1}/${items.length}</span>${opt.instant && streak>=2 ? ` · <b style="color:var(--mid)">רצף ${streak} 🔥</b>`:''}</span><span class="qchip">${opt.kind==='topic'?CATS[it.cat]:topicById(it.topic).title}</span></div>
       ${barHTML(Math.round(i/items.length*100)).replace(/class="(good|mid|low)"/,'style="background:var(--blue)" class=""')}
-      ${qImg(it.id)?`<button class="qimg" data-q="${it.id}"><img src="images/${qImg(it.id)}" alt=""><span class="cap" hidden></span></button>`:''}
+      ${img?`<button class="qimg" data-q="${it.id}"><img src="images/${img}" alt=""><span class="cap" hidden></span></button>`:''}
       <p class="qtext">${it.q}</p>
       <div class="opts">${it.order.map((o,k)=>`<button class="opt" data-o="${o}"><span class="k">${LETTERS[k]}</span><span>${it.opts[o]}</span></button>`).join('')}</div>
       <div id="after"></div>`;
     box.querySelectorAll('.opt').forEach(b=>b.onclick=()=>answer(it,+b.dataset.o));
     const qi = box.querySelector('.qimg');
-    if (qi) qi.onclick = () => openViewer([[qImg(it.id), qi.querySelector('.cap').hidden ? '' : qCap(it.id)]], 0);
+    if (qi) qi.onclick = () => openViewer([[img, qi.querySelector('.cap').hidden ? '' : qCap(it.id)]], 0);
   }
   function answer(it,o){
     const ok=o===0; log.push({it,o,ok}); qstate[it.id]=ok?1:0; qtime[it.id]=Date.now(); saveQ();
-    if (opt.instant && store.get('sound', true)) playAnswer(ok);
+    streak = ok ? streak + 1 : 0;
+    if (opt.instant && store.get('sound', true)) {
+      if (ok && [3,5,10,15,20,30].includes(streak)) playSfx('streak');
+      else playAnswer(ok);
+    }
     box.querySelectorAll('.opt').forEach(b=>{ b.disabled=true; const v=+b.dataset.o;
       if(opt.instant){ if(v===0) b.classList.add('right'); else if(v===o) b.classList.add('wrong') }
       else if(v===o) b.classList.add('picked'); });
@@ -3537,6 +3554,7 @@ function startQuiz(qs, opt){
   }
   function finish(){
     const right=log.filter(l=>l.ok).length, pct=Math.round(right/log.length*100);
+    if (store.get('sound', true) && log.length) playSfx(pct >= PASS ? 'pass' : 'fail');
     if (opt.kind==='topic'){ best[opt.topic]=Math.max(best[opt.topic]||0,pct); store.set('best2',best) }
     if (opt.kind!=='topic'){
       const d=new Date(); hist.unshift({id:Date.now()+'-'+Math.floor(Math.random()*1e5), kind:opt.kind, at:Date.now(), title:opt.title, date:`${d.getDate()}.${d.getMonth()+1}`, n:log.length, right, pct}); hist=hist.slice(0,20); store.set('history',hist); syncProgress();

@@ -57,20 +57,43 @@ for (const topic of body.topics) {
   });
 }
 
-// One image per question: the topic image whose caption shares the most words with the question,
-// its correct answer and explanation; ties go to the image used least so far, to spread them out.
+// One image per question: match specific (non-generic) words between the question and image caption,
+// weighted by word rarity and penalized by prior usage so images spread evenly and never repeat
+// mindlessly. Questions with no specific image match get no image.
+const STOP = new Set([
+  'של', 'על', 'את', 'עם', 'אל', 'לא', 'כי', 'גם', 'או', 'אם', 'מה', 'איך', 'למה',
+  'בלי', 'לפני', 'אחרי', 'תוך', 'כדי', 'בין', 'כל', 'יש', 'אין', 'זה', 'זאת', 'אלה',
+  'הוא', 'היא', 'הם', 'הן', 'טיפול', 'נפגע', 'חולה', 'מצב', 'סימן', 'סימנים',
+  'סוגי', 'גורמים', 'שלב', 'אחר', 'מבנה', 'בגוף', 'לעומת', 'תקין', 'באזור', 'מתאים',
+]);
 const QIMG = {};
 for (const topic of body.topics) {
-  const imgs = topic.images.map(im => ({ file: im.file, w: words(im.caption), used: 0 }));
+  const titleWords = words(topic.title);
+  const imgs = topic.images.map(im => {
+    const w = new Set([...words(im.caption)].filter(x => !STOP.has(x) && !titleWords.has(x)));
+    return { file: im.file, w, used: 0 };
+  });
   if (!imgs.length) continue;
+  const df = {};
+  for (const im of imgs) for (const x of im.w) df[x] = (df[x] || 0) + 1;
+  const maxPerImage = imgs.length <= 2 ? 2 : Math.min(3, Math.max(2, Math.ceil(topic.questions.length / imgs.length)));
+  let prevFile = null;
   for (const q of topic.questions) {
     const qw = words(q.q + ' ' + q.options[0] + ' ' + q.explanation);
-    let best = null, bestScore = -1;
+    let best = null, bestEff = -Infinity;
     for (const im of imgs) {
-      let score = 0; for (const w of im.w) if (qw.has(w)) score++;
-      if (score > bestScore || (score === bestScore && im.used < best.used)) { best = im; bestScore = score }
+      if (im.used >= maxPerImage) continue;
+      let raw = 0;
+      for (const x of im.w) if (qw.has(x)) raw += 1 / (df[x] || 1);
+      if (raw <= 0) continue;
+      const eff = raw - im.used * 1.2 - (im.file === prevFile ? 100 : 0);
+      if (eff > bestEff) { best = im; bestEff = eff; }
     }
-    best.used++; q.image = best.file; QIMG[q.id] = best.file;
+    if (best) {
+      best.used++; q.image = best.file; QIMG[q.id] = best.file; prevFile = best.file;
+    } else {
+      prevFile = null;
+    }
   }
 }
 

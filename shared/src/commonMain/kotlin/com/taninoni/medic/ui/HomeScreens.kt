@@ -62,25 +62,26 @@ fun HomeScreen(model: AppModel, nav: Nav) {
         item {
             Column(
                 Modifier.fillMaxWidth().background(p.band).windowInsetsPadding(WindowInsets.statusBars)
-                    .padding(start = 20.dp, end = 20.dp, top = 16.dp, bottom = 56.dp),
-                verticalArrangement = Arrangement.spacedBy(22.dp),
+                    .padding(start = 20.dp, end = 20.dp, top = 14.dp, bottom = 52.dp),
+                verticalArrangement = Arrangement.spacedBy(20.dp),
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     Logo()
                     Text("מסלול חובש", color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.ExtraBold)
                 }
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                    Ring(overall)
-                    Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                        Text("השליטה שלך בחומר", color = Color.White, fontSize = 19.sp, fontWeight = FontWeight.Bold)
-                        Text("$right מתוך ${all.size} שאלות נענו נכון לאחרונה", color = Color.White.copy(.85f), fontSize = 14.sp)
-                        Text(model.user?.let { "שלום, ${it.name.ifBlank { it.email }}" } ?: "",
-                            color = Color.White.copy(.85f), fontSize = 13.sp, modifier = Modifier.clickable { nav.go(Screen.Account) })
+                    Ring(overall, size = 84.dp)
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text("השליטה שלך בחומר", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                        Text(
+                            "היום ${model.todayCount}/${model.dailyGoal} שאלות" + if (model.studyStreakDays > 0) " · ${model.studyStreakDays} ימים ברצף" else "",
+                            color = Color.White.copy(.85f), fontSize = 14.sp,
+                        )
                     }
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    HeroButton("תרגול שאלות", "לפי קטגוריות", solid = true, Modifier.weight(1f)) { nav.tab(Screen.Picker) }
-                    HeroButton("מבחן מסכם", "${model.examSize} שאלות · עובר מ-${model.passMark}%", solid = false, Modifier.weight(1f)) {
+                    HeroButton("תרגול", null, solid = true, Modifier.weight(1f)) { nav.tab(Screen.Picker) }
+                    HeroButton("מבחן מסכם", null, solid = false, Modifier.weight(1f)) {
                         nav.go(Screen.Quiz(model.pick(model.categories.map { it.id }, model.examSize), QuizConfig("מבחן מסכם", "exam", instant = false)))
                     }
                 }
@@ -103,29 +104,21 @@ fun HomeScreen(model: AppModel, nav: Nav) {
                         Modifier.offset(y = (-30).dp).fillMaxWidth().background(p.surface).padding(start = 20.dp, end = 20.dp, top = 26.dp, bottom = 10.dp),
                         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
-                        Box(Modifier.size(34.dp).clip(RoundedCornerShape(10.dp)).background(p.blueSoft), contentAlignment = Alignment.Center) {
-                            Icon(Icons.forCategory(cat.id), null, tint = p.blue, modifier = Modifier.size(20.dp))
-                        }
                         Text(cat.name, color = p.ink, fontSize = 18.sp, fontWeight = FontWeight.ExtraBold, modifier = Modifier.weight(1f))
-                        ScorePill(model.mastery(items), model.seen(items))
+                        if (model.seen(items)) Text("${model.mastery(items)}%", color = p.muted, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
                     }
                 }
                 items(topics, key = { it.id }) { t ->
                     val items = model.allItems.filter { it.topic.id == t.id }
-                    Box(Modifier.offset(y = (-30).dp).fillMaxWidth().background(p.surface).padding(horizontal = 20.dp, vertical = 6.dp)) {
+                    Box(Modifier.offset(y = (-30).dp).fillMaxWidth().background(p.surface).padding(horizontal = 20.dp, vertical = 5.dp)) {
                         Row(
                             Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).border(1.dp, p.hair, RoundedCornerShape(20.dp))
-                                .clickable { nav.go(Screen.Topic(t.id)) }.padding(horizontal = 16.dp, vertical = 16.dp),
+                                .clickable { nav.go(Screen.Topic(t.id)) }.padding(horizontal = 18.dp, vertical = 17.dp),
                             verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp),
                         ) {
-                            Box(Modifier.size(38.dp).clip(RoundedCornerShape(12.dp)).background(p.paper), contentAlignment = Alignment.Center) {
-                                Text(t.number.toString().padStart(2, '0'), color = p.blue, fontSize = 13.5.sp, fontWeight = FontWeight.Bold)
-                            }
-                            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                                Text(t.title, color = p.ink, fontSize = 16.5.sp, fontWeight = FontWeight.SemiBold, lineHeight = 22.sp)
-                                Text(t.blurb, color = p.muted, fontSize = 13.5.sp, lineHeight = 19.sp, maxLines = 2, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
-                            }
-                            ScorePill(model.mastery(items), model.seen(items))
+                            Text(t.title, color = p.ink, fontSize = 16.5.sp, fontWeight = FontWeight.Medium, maxLines = 1,
+                                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                            if (model.seen(items)) Pill("${model.mastery(items)}%", p.tone(model.mastery(items)), p.toneSoft(model.mastery(items)))
                         }
                     }
                 }
@@ -145,7 +138,7 @@ fun HomeScreen(model: AppModel, nav: Nav) {
 }
 
 @Composable
-private fun HeroButton(title: String, sub: String, solid: Boolean, modifier: Modifier, onClick: () -> Unit) {
+private fun HeroButton(title: String, sub: String?, solid: Boolean, modifier: Modifier, onClick: () -> Unit) {
     val p = Pal
     val shape = RoundedCornerShape(16.dp)
     Column(
@@ -155,7 +148,7 @@ private fun HeroButton(title: String, sub: String, solid: Boolean, modifier: Mod
         verticalArrangement = Arrangement.spacedBy(3.dp),
     ) {
         Text(title, color = if (solid) p.blue else Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-        Text(sub, color = if (solid) p.muted else Color.White.copy(.85f), fontSize = 12.5.sp, textAlign = TextAlign.Center, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+        if (sub != null) Text(sub, color = if (solid) p.muted else Color.White.copy(.85f), fontSize = 12.5.sp, textAlign = TextAlign.Center, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
     }
 }
 
@@ -211,6 +204,31 @@ fun PickerScreen(model: AppModel, nav: Nav) {
                             Segmented(listOf(10, 20, 30, 50).map { it.toString() to it.toString() }, model.questionCount.toString()) { model.setCount(it.toInt()) }
                             GhostButton(if (mistakes > 0) "תרגול הטעויות שלי ($mistakes)" else "אין טעויות לתרגול", Modifier.fillMaxWidth(), enabled = mistakes > 0) {
                                 nav.go(Screen.Quiz(model.mistakes().shuffled().take(50), QuizConfig("תרגול טעויות", "mistakes", instant = true)))
+                            }
+                        }
+
+                        val savedCount = model.bookmarks.size
+                        SectionTitle("מצבי למידה נוספים", Modifier.padding(top = 12.dp))
+                        Panel(spacing = 10.dp) {
+                            ModeRow(
+                                title = "אתגר 60 שניות",
+                                sub = if (model.blitzBest > 0) "שיא אישי: ${model.blitzBest} נק' · ענה כמה שיותר מהר" else "ענה על כמה שיותר שאלות בדקה אחת",
+                            ) {
+                                val cats = allIds.filter { it in sel }.ifEmpty { allIds }
+                                nav.go(Screen.Blitz(model.pick(cats, 80)))
+                            }
+                            Box(Modifier.fillMaxWidth().height(1.dp).background(p.hair))
+                            ModeRow(
+                                title = "זיהוי אנטומיה",
+                                sub = "תרגול לחיצה על נקודות אנטומיות בתמונות",
+                            ) { nav.go(Screen.AnatomyQuiz) }
+                            Box(Modifier.fillMaxWidth().height(1.dp).background(p.hair))
+                            ModeRow(
+                                title = if (savedCount > 0) "שאלות שמורות ($savedCount)" else "שאלות שמורות",
+                                sub = if (savedCount > 0) "חזרה על השאלות שסימנת" else "סמן שאלות בזמן תרגול",
+                                enabled = savedCount > 0,
+                            ) {
+                                nav.go(Screen.Quiz(model.bookmarkedItems().shuffled(), QuizConfig("שאלות שמורות", "bookmarks", instant = true)))
                             }
                         }
 
@@ -275,5 +293,22 @@ private fun CategoryCard(name: String, catId: String, count: Int, pct: Int, seen
             Text("$pct%", color = if (seen) p.tone(pct) else p.muted, fontSize = 24.sp, fontWeight = FontWeight.ExtraBold, modifier = Modifier.weight(1f))
             Text("$count שאלות", color = p.muted, fontSize = 12.sp)
         }
+    }
+}
+
+@Composable
+private fun ModeRow(title: String, sub: String, enabled: Boolean = true, onClick: () -> Unit) {
+    val p = Pal
+    Row(
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).alpha(if (enabled) 1f else 0.5f)
+            .clickable(enabled = enabled, onClick = onClick).padding(vertical = 8.dp, horizontal = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(title, color = p.ink, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+            Text(sub, color = p.muted, fontSize = 13.sp, lineHeight = 18.sp)
+        }
+        Text("התחל", color = if (enabled) p.blue else p.muted, fontSize = 14.sp, fontWeight = FontWeight.Bold)
     }
 }

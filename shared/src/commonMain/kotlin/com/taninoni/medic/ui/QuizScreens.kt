@@ -56,14 +56,25 @@ fun QuizScreen(model: AppModel, nav: Nav, s: Screen.Quiz) {
     val cfg = s.config.let { if (it.instant && !model.instantFeedback) it.copy(instant = false) else it }
     val items = s.items
     val orders = remember(s) { items.map { it.question.options.indices.shuffled() } }
+    // Never show the exact same image on two consecutive questions in a run.
+    val shownImages = remember(s) {
+        var prev: String? = null
+        items.map { item ->
+            val f = item.question.image
+            if (f != null && f != prev) { prev = f; f } else null
+        }
+    }
     var index by remember(s) { mutableIntStateOf(0) }
     var picked by remember(s) { mutableStateOf<Int?>(null) }
+    var eliminated by remember(s, index) { mutableStateOf<Set<Int>>(emptySet()) }
+    var streak by remember(s) { mutableIntStateOf(0) }
+    var bestStreak by remember(s) { mutableIntStateOf(0) }
     val log = remember(s) { mutableStateListOf<LogEntry>() }
     val scroll = rememberScrollState()
 
     fun finish() {
         if (cfg.kind != "topic") model.recordAttempt(cfg.title, cfg.kind, log.toList())
-        nav.replace(Screen.Results(log.toList(), cfg))
+        nav.replace(Screen.Results(log.toList(), cfg, bestStreak))
     }
     fun next() {
         picked = null
@@ -80,21 +91,25 @@ fun QuizScreen(model: AppModel, nav: Nav, s: Screen.Quiz) {
             return@Column
         }
         val item = items[index]
+        val saved = model.isBookmarked(item.id)
         Column(Modifier.weight(1f).sheetBackdrop().verticalScroll(scroll).padding(top = 16.dp)) {
             Sheet {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("שאלה ${index + 1}/${items.size}", color = p.muted, fontSize = 14.sp, modifier = Modifier.weight(1f))
-                    Text(if (cfg.kind == "topic") model.category(item.cat)?.name.orEmpty() else item.topic.title,
-                        Modifier.clip(RoundedCornerShape(50)).background(p.blueSoft).padding(horizontal = 10.dp, vertical = 4.dp),
-                        color = p.blue, fontSize = 12.5.sp, fontWeight = FontWeight.SemiBold)
+                    if (cfg.instant && streak >= 2) {
+                        Text("רצף $streak",
+                            Modifier.clip(RoundedCornerShape(50)).background(p.midSoft).padding(horizontal = 10.dp, vertical = 4.dp),
+                            color = p.mid, fontSize = 12.5.sp, fontWeight = FontWeight.ExtraBold)
+                    }
                 }
                 ProgressBar(index.toFloat() / items.size, p.blue)
-                item.question.image?.let { file ->
+                shownImages.getOrNull(index)?.let { file ->
                     val img = item.topic.images.firstOrNull { it.file == file } ?: com.taninoni.medic.data.TopicImage(file, "")
                     QuestionImage(img, showCaption = cfg.instant && picked != null)
                 }
                 Text(item.question.q, color = p.ink, fontSize = 20.sp, fontWeight = FontWeight.SemiBold, lineHeight = 30.sp, modifier = Modifier.padding(top = 6.dp, bottom = 4.dp))
                 orders[index].forEachIndexed { k, o ->
+                    val hidden = o in eliminated
                     val chosen = picked
                     val state = when {
                         chosen == null -> 0
@@ -106,14 +121,24 @@ fun QuizScreen(model: AppModel, nav: Nav, s: Screen.Quiz) {
                     val border = when (state) { 1 -> p.good; 2 -> p.bad; 3 -> p.blue; else -> p.hair }
                     val bg = when (state) { 1 -> p.goodSoft; 2 -> p.badSoft; 3 -> p.blueSoft; else -> p.surface }
                     val shape = RoundedCornerShape(18.dp)
-                    Row(
+                    if (!hidden) Row(
                         Modifier.fillMaxWidth().clip(shape).border(if (state == 0) 1.5.dp else 2.dp, border, shape).background(bg)
                             .clickable(enabled = chosen == null) {
                                 picked = o
                                 log += LogEntry(item, o)
-                                model.recordAnswer(item.id, o == 0)
+                                val ok = o == 0
+                                model.recordAnswer(item.id, ok)
+                                if (ok) {
+                                    streak++
+                                    if (streak > bestStreak) bestStreak = streak
+                                } else {
+                                    streak = 0
+                                }
                                 // In exam mode the answer stays hidden until the end, so no sound there.
-                                if (cfg.instant && model.soundOn) AnswerSound.play(o == 0)
+                                if (cfg.instant && model.soundOn) {
+                                    if (ok && streak in setOf(3, 5, 10, 15, 20, 30)) AnswerSound.play(Sfx.STREAK)
+                                    else AnswerSound.play(ok)
+                                }
                             }.padding(horizontal = 16.dp, vertical = 16.dp),
                         horizontalArrangement = Arrangement.spacedBy(14.dp),
                         verticalAlignment = Alignment.CenterVertically,
@@ -123,6 +148,29 @@ fun QuizScreen(model: AppModel, nav: Nav, s: Screen.Quiz) {
                         }
                         Text(item.question.options[o], color = p.ink, fontSize = 16.5.sp, lineHeight = 24.sp, modifier = Modifier.weight(1f))
                     }
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    if (cfg.instant && picked == null && eliminated.isEmpty() && item.question.options.size >= 4) {
+                        Text(
+                            "רמז 50/50",
+                            color = p.blue, fontSize = 13.5.sp, fontWeight = FontWeight.Bold,
+                            modifier = Modifier.clip(RoundedCornerShape(50)).background(p.blueSoft)
+                                .clickable {
+                                    eliminated = item.question.options.indices.filter { it != 0 }.shuffled().take(2).toSet()
+                                    if (model.soundOn) AnswerSound.play(Sfx.TAP)
+                                }.padding(horizontal = 14.dp, vertical = 8.dp),
+                        )
+                    }
+                    Spacer(Modifier.weight(1f))
+                    Text(
+                        if (saved) "נשמר לחזרה" else "שמור לחזרה",
+                        color = if (saved) p.mid else p.muted, fontSize = 13.5.sp, fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.clip(RoundedCornerShape(50)).background(if (saved) p.midSoft else p.paper)
+                            .clickable {
+                                model.toggleBookmark(item.id)
+                                if (model.soundOn) AnswerSound.play(Sfx.TAP)
+                            }.padding(horizontal = 14.dp, vertical = 8.dp),
+                    )
                 }
                 val chosen = picked
                 if (cfg.instant && chosen != null) {
@@ -145,6 +193,10 @@ fun ResultsScreen(model: AppModel, nav: Nav, s: Screen.Results) {
     val right = log.count { it.ok }
     val pct = if (log.isEmpty()) 0 else right * 100 / log.size
     val pass = pct >= model.passMark
+    LaunchedEffect(s) {
+        AnswerSound.preload()
+        if (model.soundOn && log.isNotEmpty()) AnswerSound.play(if (pass) Sfx.PASS else Sfx.FAIL)
+    }
     val cats = model.categories.filter { c -> log.any { it.item.cat == c.id } }
     val byCat = cats.associate { c -> c.id to log.filter { it.item.cat == c.id }.let { l -> l.count { it.ok } to l.size } }
     var filter by remember { mutableStateOf<String?>(null) }
@@ -191,7 +243,10 @@ fun ResultsScreen(model: AppModel, nav: Nav, s: Screen.Results) {
                         Text("$right תשובות נכונות", color = p.ink, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
                         Text("${log.size - right} טעויות", color = p.ink, fontWeight = FontWeight.Bold)
                     }
-                    Text("ציון עובר: ${model.passMark}%", color = p.muted, fontSize = 13.5.sp)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("ציון עובר: ${model.passMark}%", color = p.muted, fontSize = 13.5.sp, modifier = Modifier.weight(1f))
+                        if (s.bestStreak >= 2) Text("רצף שיא: ${s.bestStreak}", color = p.mid, fontSize = 13.5.sp, fontWeight = FontWeight.Bold)
+                    }
                     SectionTitle("צפייה בתשובות לפי קטגוריה", Modifier.padding(top = 8.dp))
                     cats.chunked(2).forEach { row ->
                         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {

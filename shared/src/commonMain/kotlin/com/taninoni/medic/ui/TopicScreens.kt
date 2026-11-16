@@ -77,19 +77,15 @@ private fun Learn(t: Topic, goTab: (String) -> Unit) {
     t.note?.let {
         Box(Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(p.midSoft).padding(16.dp)) { Text(it, color = p.ink, fontSize = 15.sp, lineHeight = 22.sp) }
     }
-    t.nums.chunked(2).forEach { row ->
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            row.forEach { n ->
-                Column(Modifier.weight(1f).clip(RoundedCornerShape(18.dp)).background(p.blueSoft).padding(horizontal = 14.dp, vertical = 14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text(n.value, color = p.blue, fontSize = 18.sp, fontWeight = FontWeight.Bold)
-                    Text(n.label, color = p.muted, fontSize = 13.5.sp, lineHeight = 18.sp)
-                }
+    if (t.nums.isNotEmpty()) Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(p.paper).padding(horizontal = 16.dp, vertical = 8.dp)) {
+        t.nums.forEach { n ->
+            Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text(n.label, color = p.muted, fontSize = 14.5.sp, modifier = Modifier.weight(1f))
+                Text(n.value, color = p.blue, fontSize = 15.5.sp, fontWeight = FontWeight.Bold)
             }
-            if (row.size == 1) Spacer(Modifier.weight(1f))
         }
     }
     val placed = t.sections.flatMap { it.images }.toSet()
-    ImageGallery(t.images.filter { it.file !in placed })
     t.sections.forEach { s ->
         Column(Modifier.padding(top = 14.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text(s.title, color = p.ink, fontSize = 19.sp, fontWeight = FontWeight.ExtraBold)
@@ -108,6 +104,8 @@ private fun Learn(t: Topic, goTab: (String) -> Unit) {
             s.images.forEach { f -> t.images.firstOrNull { it.file == f }?.let { InlineImage(it) } }
         }
     }
+    VSpace(8.dp)
+    ImageGallery(t.images.filter { it.file !in placed })
     VSpace(12.dp)
     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         PrimaryButton("לתרגול (${t.questions.size} שאלות)", Modifier.weight(1f)) { goTab("quiz") }
@@ -118,6 +116,7 @@ private fun Learn(t: Topic, goTab: (String) -> Unit) {
 @Composable
 private fun FlashCards(t: Topic) {
     val p = Pal
+    val soundOn = LocalSoundOn.current
     var deck by remember(t.id) { mutableStateOf(t.questions.shuffled()) }
     var i by remember(t.id) { mutableIntStateOf(0) }
     var known by remember(t.id) { mutableIntStateOf(0) }
@@ -125,6 +124,9 @@ private fun FlashCards(t: Topic) {
     var flipped by remember(t.id, i, deck) { mutableStateOf(false) }
 
     if (i >= deck.size) {
+        androidx.compose.runtime.LaunchedEffect(i) {
+            if (soundOn) AnswerSound.play(if (known * 2 >= deck.size) Sfx.PASS else Sfx.FAIL)
+        }
         Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Eyebrow("סיימת סבב")
             Text("$known/${deck.size}", color = p.ink, fontSize = 48.sp, fontWeight = FontWeight.Bold)
@@ -137,12 +139,13 @@ private fun FlashCards(t: Topic) {
     val q = deck[i]
     val rot by animateFloatAsState(if (flipped) 180f else 0f, tween(420))
     Row { Text("כרטיס ${i + 1}/${deck.size}", color = p.muted, fontSize = 14.sp, modifier = Modifier.weight(1f)); Text("הקש להפוך", color = p.muted, fontSize = 14.sp) }
+    ProgressBar(i.toFloat() / deck.size, p.blue)
     Box(
         Modifier.fillMaxWidth().heightIn(min = 300.dp)
             .graphicsLayer { rotationY = rot; cameraDistance = 14 * density }
             .clip(RoundedCornerShape(22.dp))
             .then(if (rot > 90f) Modifier.background(p.band) else Modifier.background(p.surface).border(2.dp, p.line, RoundedCornerShape(22.dp)))
-            .clickable { flipped = !flipped }.padding(26.dp),
+            .clickable { flipped = !flipped; if (soundOn) AnswerSound.play(Sfx.FLIP) }.padding(26.dp),
         contentAlignment = Alignment.Center,
     ) {
         Column(Modifier.graphicsLayer { rotationY = if (rot > 90f) 180f else 0f }, verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -157,8 +160,8 @@ private fun FlashCards(t: Topic) {
         }
     }
     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        GhostButton("עוד לא", Modifier.weight(1f)) { again = again + q; i++ }
-        PrimaryButton("ידעתי", Modifier.weight(1f)) { known++; i++ }
+        GhostButton("עוד לא", Modifier.weight(1f)) { if (soundOn) AnswerSound.play(Sfx.WRONG); again = again + q; i++ }
+        PrimaryButton("ידעתי", Modifier.weight(1f)) { if (soundOn) AnswerSound.play(Sfx.CORRECT); known++; i++ }
     }
 }
 

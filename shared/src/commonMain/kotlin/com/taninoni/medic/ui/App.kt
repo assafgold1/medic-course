@@ -32,7 +32,9 @@ sealed interface Screen {
     data object Picker : Screen
     data class Topic(val id: String) : Screen
     data class Quiz(val items: List<QItem>, val config: QuizConfig) : Screen
-    data class Results(val log: List<LogEntry>, val config: QuizConfig) : Screen
+    data class Results(val log: List<LogEntry>, val config: QuizConfig, val bestStreak: Int = 0) : Screen
+    data class Blitz(val items: List<QItem>) : Screen
+    data object AnatomyQuiz : Screen
     data object Metronome : Screen
     data object Reference : Screen
     data object Account : Screen
@@ -76,6 +78,7 @@ fun App() {
     val model = remember { AppModel(scope) }
     val nav = remember { Nav() }
     LaunchedEffect(Unit) { model.load() }
+    LaunchedEffect(Unit) { AnswerSound.preload() }
     var splash by remember { mutableStateOf(true) }
     LaunchedEffect(model.user == null) { if (model.user == null) nav.home() }
     AppBack.handler = { if (ViewerState.isOpen) { ViewerState.close(); true } else nav.back() }
@@ -85,6 +88,7 @@ fun App() {
         CompositionLocalProvider(
             LocalLayoutDirection provides LayoutDirection.Rtl,
             LocalDensity provides Density(density.density, density.fontScale * model.textScale),
+            LocalSoundOn provides model.soundOn,
         ) {
             Box(Modifier.fillMaxSize().background(Pal.paper)) {
                 if (model.content == null) {
@@ -99,6 +103,8 @@ fun App() {
                         is Screen.Topic -> TopicScreen(model, nav, s.id)
                         is Screen.Quiz -> QuizScreen(model, nav, s)
                         is Screen.Results -> ResultsScreen(model, nav, s)
+                        is Screen.Blitz -> BlitzScreen(model, nav, s)
+                        Screen.AnatomyQuiz -> AnatomyQuizScreen(model, nav)
                         Screen.Metronome -> MetronomeScreen(model, nav)
                         Screen.Reference -> ReferenceScreen(model, nav)
                         Screen.Account -> AccountScreen(model, nav)

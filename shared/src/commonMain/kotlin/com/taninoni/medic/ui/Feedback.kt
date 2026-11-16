@@ -1,17 +1,37 @@
 package com.taninoni.medic.ui
 
+import androidx.compose.runtime.compositionLocalOf
 import com.taninoni.medic.Sound
 import com.taninoni.medic.res.Res
 
-/** Success / error sounds after answering a question (loaded once from compose resources). */
+val LocalSoundOn = compositionLocalOf { true }
+
+enum class Sfx(val file: String) {
+    CORRECT("correct"),
+    WRONG("wrong"),
+    STREAK("streak"),
+    FLIP("flip"),
+    PASS("pass"),
+    FAIL("fail"),
+    TAP("tap"),
+    TICK("tick"),
+}
+
+/** Sound effects loaded once from compose resources and played via [Sound.clip]. */
 object AnswerSound {
-    private var correct: ByteArray? = null
-    private var wrong: ByteArray? = null
+    private val cache = mutableMapOf<Sfx, ByteArray>()
 
     suspend fun preload() {
-        if (correct == null) correct = runCatching { Res.readBytes("files/sounds/correct.wav") }.getOrNull()
-        if (wrong == null) wrong = runCatching { Res.readBytes("files/sounds/wrong.wav") }.getOrNull()
+        for (sfx in Sfx.entries) {
+            if (sfx !in cache) {
+                runCatching { Res.readBytes("files/sounds/${sfx.file}.wav") }.getOrNull()?.let { cache[sfx] = it }
+            }
+        }
     }
 
-    fun play(ok: Boolean) { (if (ok) correct else wrong)?.let { runCatching { Sound.clip(it) } } }
+    fun play(ok: Boolean) = play(if (ok) Sfx.CORRECT else Sfx.WRONG)
+
+    fun play(sfx: Sfx) {
+        cache[sfx]?.let { runCatching { Sound.clip(it) } }
+    }
 }

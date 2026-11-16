@@ -35,6 +35,13 @@ class AppModel(private val scope: CoroutineScope) {
     var instantFeedback by mutableStateOf(settings.getBoolean(K_INSTANT, true)); private set
     var soundOn by mutableStateOf(settings.getBoolean(K_SOUND, true)); private set
 
+    /* learning extras: bookmarks, speed-blitz high score, daily study streak */
+    var bookmarks by mutableStateOf(settings.getStringOrNull(K_BOOKMARKS)?.split(',')?.filter { it.isNotBlank() }?.toSet().orEmpty()); private set
+    var blitzBest by mutableStateOf(settings.getInt(K_BLITZ_BEST, 0)); private set
+    var todayCount by mutableStateOf(0); private set
+    var studyStreakDays by mutableStateOf(settings.getInt(K_STREAK_DAYS, 0)); private set
+    val dailyGoal = 20
+
     private var token: String? = settings.getStringOrNull(K_TOKEN)
 
     enum class SyncState { Idle, Working, Ok, Error }
@@ -52,6 +59,19 @@ class AppModel(private val scope: CoroutineScope) {
                 .also { settings.putString(K_BUNDLED, it.version); settings.remove(K_CONTENT) }
         }
         scope.launch { refreshContent(); sync() }
+        refreshDailyStats()
+    }
+
+    private fun currentDay(): Long = nowMillis() / 86_400_000L
+
+    private fun refreshDailyStats() {
+        val today = currentDay()
+        val savedDay = settings.getLong(K_LAST_DAY, -1L)
+        todayCount = if (savedDay == today) settings.getInt(K_TODAY_COUNT, 0) else 0
+        if (savedDay in 0 until (today - 1)) {
+            studyStreakDays = 0
+            settings.putInt(K_STREAK_DAYS, 0)
+        }
     }
 
     /* ---------- content ---------- */
@@ -96,6 +116,35 @@ class AppModel(private val scope: CoroutineScope) {
     fun recordAnswer(id: String, correct: Boolean) {
         progress = progress.copy(answers = progress.answers + (id to Answer(if (correct) 1 else 0, nowMillis())), updatedAt = nowMillis())
         saveProgress()
+        val today = currentDay()
+        val savedDay = settings.getLong(K_LAST_DAY, -1L)
+        if (savedDay != today) {
+            val nextStreak = if (savedDay == today - 1) studyStreakDays + 1 else 1
+            studyStreakDays = nextStreak
+            settings.putInt(K_STREAK_DAYS, nextStreak)
+            settings.putLong(K_LAST_DAY, today)
+            todayCount = 1
+        } else {
+            todayCount++
+        }
+        settings.putInt(K_TODAY_COUNT, todayCount)
+    }
+
+    fun isBookmarked(id: String) = id in bookmarks
+
+    fun toggleBookmark(id: String) {
+        bookmarks = if (id in bookmarks) bookmarks - id else bookmarks + id
+        settings.putString(K_BOOKMARKS, bookmarks.joinToString(","))
+    }
+
+    fun bookmarkedItems(): List<QItem> = allItems.filter { it.id in bookmarks }
+
+    /** Records a 60-second blitz score and returns true if it beat the previous record. */
+    fun recordBlitzScore(score: Int): Boolean {
+        if (score <= blitzBest) return false
+        blitzBest = score
+        settings.putInt(K_BLITZ_BEST, score)
+        return true
     }
 
     fun recordAttempt(title: String, kind: String, log: List<LogEntry>) {
@@ -234,5 +283,11 @@ class AppModel(private val scope: CoroutineScope) {
         const val K_EXAM = "exam_size"
         const val K_INSTANT = "instant_feedback"
         const val K_SOUND = "sound"
+        const val K_BOOKMARKS = "bookmarks"
+        const val K_BLITZ_BEST = "blitz_best"
+        const val K_LAST_DAY = "last_study_day"
+        const val K_TODAY_COUNT = "today_count"
+        const val K_STREAK_DAYS = "study_streak_days"
+        const val DAILY_GOAL = 20
     }
 }
