@@ -45,6 +45,7 @@ import com.taninoni.medic.data.Topic
 fun TopicScreen(model: AppModel, nav: Nav, id: String) {
     val p = Pal
     val t = model.topic(id) ?: return
+    androidx.compose.runtime.LaunchedEffect(id) { model.openedTopic(id) }
     var tab by remember(id) { mutableStateOf("learn") }
     Column(Modifier.fillMaxSize()) {
         AppBar(t.title) { nav.back() }

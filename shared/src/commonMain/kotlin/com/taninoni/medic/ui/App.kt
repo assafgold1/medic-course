@@ -25,7 +25,7 @@ import com.taninoni.medic.data.LogEntry
 import com.taninoni.medic.data.QItem
 
 /** A quiz run. [instant] shows the answer after each question; exams show results only at the end. */
-data class QuizConfig(val title: String, val kind: String, val instant: Boolean, val topicId: String? = null)
+data class QuizConfig(val title: String, val kind: String, val instant: Boolean, val topicId: String? = null, val timeLimitSec: Int = 0)
 
 sealed interface Screen {
     data object Home : Screen

@@ -38,6 +38,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -80,9 +81,12 @@ fun HomeScreen(model: AppModel, nav: Nav) {
                     }
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    HeroButton("תרגול", null, solid = true, Modifier.weight(1f)) { nav.tab(Screen.Picker) }
+                    HeroButton("תרגול חכם", null, solid = true, Modifier.weight(1f)) {
+                        nav.go(Screen.Quiz(model.smartPick(20), QuizConfig("תרגול חכם", "smart", instant = true)))
+                    }
                     HeroButton("מבחן מסכם", null, solid = false, Modifier.weight(1f)) {
-                        nav.go(Screen.Quiz(model.pick(model.categories.map { it.id }, model.examSize), QuizConfig("מבחן מסכם", "exam", instant = false)))
+                        nav.go(Screen.Quiz(model.pick(model.categories.map { it.id }, model.examSize),
+                            QuizConfig("מבחן מסכם", "exam", instant = false, timeLimitSec = model.examSize * 60)))
                     }
                 }
             }
@@ -93,6 +97,19 @@ fun HomeScreen(model: AppModel, nav: Nav) {
                     .padding(start = 20.dp, end = 20.dp, top = 26.dp, bottom = 4.dp),
             ) {
                 SearchField(queryState)
+                model.lastTopicId?.let { model.topic(it) }?.takeIf { queryState.text.isEmpty() }?.let { t ->
+                    Row(
+                        Modifier.padding(top = 14.dp).fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(p.blueSoft)
+                            .clickable { nav.go(Screen.Topic(t.id)) }.padding(horizontal = 16.dp, vertical = 14.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Column(Modifier.weight(1f)) {
+                            Text("להמשיך מאיפה שעצרת", color = p.muted, fontSize = 13.sp)
+                            Text(t.title, color = p.ink, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
+                        }
+                        Icon(Icons.back, null, tint = p.blue, modifier = Modifier.size(20.dp).graphicsLayer { scaleX = -1f })
+                    }
+                }
             }
         }
         model.categories.forEach { cat ->

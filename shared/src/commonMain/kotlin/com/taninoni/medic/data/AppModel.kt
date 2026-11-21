@@ -176,6 +176,41 @@ class AppModel(private val scope: CoroutineScope) {
         return out.shuffled()
     }
 
+    /**
+     * Smart practice: questions most worth reviewing now. Wrong answers first (the most recent mistakes
+     * lead), then questions never answered, then correct answers that are getting old (due for review).
+     * At most a third of a run comes from any single topic so one weak topic doesn't take over.
+     */
+    fun smartPick(n: Int): List<QItem> {
+        val now = nowMillis()
+        val day = 86_400_000.0
+        fun score(it: QItem): Double {
+            val a = progress.answers[it.id] ?: return 2.0 + kotlin.random.Random.nextDouble() * 0.5
+            val ageDays = (now - a.t) / day
+            return if (a.v == 0) 3.0 + 1.0 / (1.0 + ageDays) else minOf(1.9, ageDays / 14.0)
+        }
+        val ranked = allItems.map { it to score(it) }.sortedByDescending { it.second }.map { it.first }
+        val perTopic = mutableMapOf<String, Int>()
+        val cap = maxOf(3, n / 3)
+        val out = mutableListOf<QItem>()
+        for (q in ranked) {
+            if (out.size >= n) break
+            val c = perTopic.getOrElse(q.topic.id) { 0 }
+            if (c < cap) { out += q; perTopic[q.topic.id] = c + 1 }
+        }
+        return out.shuffled()
+    }
+
+    /** Number of questions due now: wrong ones plus correct answers older than two weeks. */
+    fun dueCount(): Int {
+        val old = nowMillis() - 14 * 86_400_000L
+        return progress.answers.count { (id, a) -> a.v == 0 || a.t < old }.coerceAtMost(allItems.size)
+    }
+
+    /** The last topic the user opened, for "continue" on the home screen. */
+    var lastTopicId by mutableStateOf(settings.getStringOrNull(K_LAST_TOPIC)); private set
+    fun openedTopic(id: String) { if (lastTopicId != id) { lastTopicId = id; settings.putString(K_LAST_TOPIC, id) } }
+
     fun setSelection(cats: Set<String>) { selectedCats = cats; settings.putString(K_SEL, cats.joinToString(",")) }
     fun setCount(n: Int) { questionCount = n; settings.putInt(K_COUNT, n) }
     fun updateTheme(mode: String) { themeMode = mode; settings.putString(K_THEME, mode) }
@@ -285,6 +320,7 @@ class AppModel(private val scope: CoroutineScope) {
         const val K_SOUND = "sound"
         const val K_BOOKMARKS = "bookmarks"
         const val K_BLITZ_BEST = "blitz_best"
+        const val K_LAST_TOPIC = "last_topic"
         const val K_LAST_DAY = "last_study_day"
         const val K_TODAY_COUNT = "today_count"
         const val K_STREAK_DAYS = "study_streak_days"

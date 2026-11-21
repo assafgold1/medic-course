@@ -82,6 +82,12 @@ fun QuizScreen(model: AppModel, nav: Nav, s: Screen.Quiz) {
     }
     LaunchedEffect(index) { scroll.scrollTo(0) }
     LaunchedEffect(Unit) { AnswerSound.preload() }
+    // Timed exam: the clock runs for the whole test; at zero the test ends with what was answered.
+    var left by remember(s) { mutableIntStateOf(cfg.timeLimitSec) }
+    if (cfg.timeLimitSec > 0) LaunchedEffect(s) {
+        while (left > 0) { delay(1000); left-- }
+        finish()
+    }
     if (!cfg.instant) LaunchedEffect(picked) { if (picked != null) { delay(380); next() } }
 
     Column(Modifier.fillMaxSize()) {
@@ -96,6 +102,12 @@ fun QuizScreen(model: AppModel, nav: Nav, s: Screen.Quiz) {
             Sheet {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("שאלה ${index + 1}/${items.size}", color = p.muted, fontSize = 14.sp, modifier = Modifier.weight(1f))
+                    if (cfg.timeLimitSec > 0) {
+                        val low = left <= 60
+                        Text("${left / 60}:${(left % 60).toString().padStart(2, '0')}",
+                            Modifier.clip(RoundedCornerShape(50)).background(if (low) p.badSoft else p.paper).padding(horizontal = 10.dp, vertical = 4.dp),
+                            color = if (low) p.bad else p.ink, fontSize = 13.5.sp, fontWeight = FontWeight.Bold)
+                    }
                     if (cfg.instant && streak >= 2) {
                         Text("רצף $streak",
                             Modifier.clip(RoundedCornerShape(50)).background(p.midSoft).padding(horizontal = 10.dp, vertical = 4.dp),

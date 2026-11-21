@@ -75,6 +75,11 @@ h3{font-size:18px}
 @keyframes sp-up{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:none}}
 @media (prefers-reduced-motion:reduce){.splash *{animation-duration:.01s!important;animation-delay:0s!important}}
 .brand .mark img{width:30px;height:30px}
+.qclock{font-weight:700;font-size:13.5px;padding:4px 10px;border-radius:999px;background:var(--paper);font-family:var(--mono)}
+.qclock.low{background:var(--bad-soft);color:var(--bad)}
+.resume{display:flex;flex-direction:column;gap:2px;margin-top:14px;padding:14px 16px;border-radius:16px;background:var(--blue-soft);color:var(--ink);text-decoration:none}
+.resume small{color:var(--muted);font-size:13px}.resume b{font-size:16px;font-weight:600}
+
 /* Calmer home and topic pages: titles only on topic rows, compact numbers list, no small print */
 .group .topic{grid-template-columns:1fr auto;padding:15px 16px;border-width:1px}
 .group .topic .n,.group .topic .d,.ghead .ic,.hbtn small{display:none!important}
@@ -3312,6 +3317,16 @@ function playSfx(k){
   } catch (e) {}
 }
 const playAnswer = ok => playSfx(ok ? 'correct' : 'wrong');
+// Smart practice: wrong answers first (recent first), then unseen, then old correct answers; max a third per topic.
+function smartPick(n){
+  const now = Date.now(), day = 864e5;
+  const score = q => { if (!(q.id in qstate)) return 2 + Math.random()*0.5; const age = (now - (qtime[q.id]||0))/day;
+    return qstate[q.id] === 0 ? 3 + 1/(1+age) : Math.min(1.9, age/14) };
+  const ranked = ALLQ.map(q => [q, score(q)]).sort((a,b) => b[1]-a[1]).map(x => x[0]);
+  const cap = Math.max(3, Math.floor(n/3)), per = {}, out = [];
+  for (const q of ranked) { if (out.length >= n) break; if ((per[q.topic]||0) < cap) { out.push(q); per[q.topic] = (per[q.topic]||0)+1 } }
+  return shuffle(out);
+}
 const ALLQ = TOPICS.flatMap(t => t.quiz.map((q,i)=>({id:t.id+'#'+i, topic:t.id, cat:t.cat, q:q[0], opts:q[1], e:q[2]})));
 const topicById = id => TOPICS.find(t=>t.id===id);
 const catQ = c => ALLQ.filter(q=>q.cat===c);
@@ -3344,7 +3359,8 @@ function route(){
   const h = (location.hash||'').replace('#','') || 'home';
   if (h==='home') renderHome();
   else if (h==='practice') renderPicker();
-  else if (h==='exam') startQuiz(pickQs(GROUP_ORDER, 30), {title:'מבחן מסכם', back:'home', kind:'exam', cats:GROUP_ORDER, instant:false});
+  else if (h==='exam') startQuiz(pickQs(GROUP_ORDER, 30), {title:'מבחן מסכם', back:'home', kind:'exam', cats:GROUP_ORDER, instant:false, timeLimit:30*60});
+  else if (h==='smart') startQuiz(smartPick(20), {title:'תרגול חכם', back:'home', kind:'smart', cats:GROUP_ORDER, instant:true});
   else if (h==='mistakes') startQuiz(shuffle(mistakesList()).slice(0,50), {title:'תרגול טעויות', back:'practice', kind:'mistakes', cats:GROUP_ORDER, instant:true});
   else if (h==='cpr-metronome') renderMetronome();
   else if (h==='numbers') renderNumbers();
@@ -3376,12 +3392,13 @@ function renderHome(){
       <p><span class="mono">${right}</span> מתוך <span class="mono">${total}</span> שאלות נענו נכון לאחרונה</p>
       <p>${acct.user?`שלום, ${esc(acct.user.name||acct.user.email)}`:`${TOPICS.length} נושאים · ${GROUP_ORDER.length} קטגוריות`}</p></div></div>
     <div class="hero-btns">
-      <a class="hbtn solid" href="#practice">תרגול שאלות<small>בחירת קטגוריות והתקדמות</small></a>
+      <a class="hbtn solid" href="#smart">תרגול חכם<small>טעויות ושאלות שהגיע זמנן</small></a>
       <a class="hbtn" href="#exam">מבחן מסכם<small>30 שאלות · עובר מ-${PASS}%</small></a>
     </div>
   </div></section>
   <main class="sheet lift">
     <input class="search" id="find" type="search" placeholder="חיפוש נושא, למשל: לידה, כוויות, אמבו" aria-label="חיפוש נושא" autocomplete="off">
+    ${(()=>{ const t = topicById(store.get('lastTopic','')); return t ? `<a class="resume" href="#${t.id}"><small>להמשיך מאיפה שעצרת</small><b>${t.title}</b></a>` : '' })()}
     ${GROUP_ORDER.map(g=>{ const m=mastery(g); return `
       <section class="group" data-g="${g}">
         <div class="ghead"><span class="ic">${ICONS[g]}</span><h2>${CATS[g]}</h2><span class="pill ${catQ(g).some(q=>q.id in qstate)?tone(m):'none'}">${m}%</span></div>
@@ -3438,6 +3455,7 @@ function renderPicker(){
 
 /* ===================== TOPIC ===================== */
 function renderTopic(id, tab){
+  store.set('lastTopic', id);
   const t = topicById(id);
   const tabs = [['learn','לימוד'],['cards','כרטיסיות'],['quiz','תרגול']];
   $app.innerHTML = appbar(t.title,'home') + `
@@ -3516,6 +3534,11 @@ function startQuiz(qs, opt){
   if (!qs.length){ box.innerHTML = `<div class="empty">אין כרגע שאלות לתרגול כאן. כל הכבוד!</div>`; return }
   const items = qs.map(q=>({...q, order:shuffle([0,1,2,3])}));
   let i=0, streak=0, lastImg=null; const log=[];
+  // Timed exam: one clock for the whole test; at zero the test ends with what was answered.
+  let left = opt.timeLimit || 0, timer = null;
+  const clock = () => `${Math.floor(left/60)}:${String(left%60).padStart(2,'0')}`;
+  if (left) { timer = setInterval(() => { left--; const c = box.querySelector('.qclock'); if (c) { c.textContent = clock(); c.classList.toggle('low', left <= 60) }
+    if (left <= 0) { clearInterval(timer); i = items.length; finish() } }, 1000); cleanup = () => clearInterval(timer) }
   function draw(){
     if (i>=items.length) return finish();
     const it = items[i];
@@ -3523,7 +3546,7 @@ function startQuiz(qs, opt){
     const img = rawImg && rawImg !== lastImg ? rawImg : null;
     lastImg = img;
     box.innerHTML = `
-      <div class="qhead"><span>שאלה <span class="mono">${i+1}/${items.length}</span>${opt.instant && streak>=2 ? ` · <b style="color:var(--mid)">רצף ${streak} 🔥</b>`:''}</span><span class="qchip">${opt.kind==='topic'?CATS[it.cat]:topicById(it.topic).title}</span></div>
+      <div class="qhead"><span>שאלה <span class="mono">${i+1}/${items.length}</span>${opt.instant && streak>=2 ? ` · <b style="color:var(--mid)">רצף ${streak} 🔥</b>`:''}</span>${left?`<span class="qclock${left<=60?' low':''}">${clock()}</span>`:''}</div>
       ${barHTML(Math.round(i/items.length*100)).replace(/class="(good|mid|low)"/,'style="background:var(--blue)" class=""')}
       ${img?`<button class="qimg" data-q="${it.id}"><img src="images/${img}" alt=""><span class="cap" hidden></span></button>`:''}
       <p class="qtext">${it.q}</p>
@@ -3553,6 +3576,7 @@ function startQuiz(qs, opt){
     } else setTimeout(()=>{i++;draw()}, 380);
   }
   function finish(){
+    if (timer) { clearInterval(timer); timer = null }
     const right=log.filter(l=>l.ok).length, pct=Math.round(right/log.length*100);
     if (store.get('sound', true) && log.length) playSfx(pct >= PASS ? 'pass' : 'fail');
     if (opt.kind==='topic'){ best[opt.topic]=Math.max(best[opt.topic]||0,pct); store.set('best2',best) }
