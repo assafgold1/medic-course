@@ -97,6 +97,27 @@ for (const topic of body.topics) {
       prevFile = null;
     }
   }
+  // Every question gets an image: questions without a specific match take the closest caption
+  // (title words allowed, no usage cap), else the topic's least-used summary diagram, else its least-used image.
+  const loose = imgs.map(im => ({ im, w: new Set([...words(topic.images.find(x => x.file === im.file).caption)].filter(x => !STOP.has(x))) }));
+  topic.questions.forEach((q, k) => {
+    if (q.image) return;
+    const prev = k > 0 ? topic.questions[k - 1].image : null, next = topic.questions[k + 1]?.image;
+    const qw = words(q.q + ' ' + q.options[0] + ' ' + q.explanation);
+    const ok = im => im.file !== prev && im.file !== next;
+    let best = null, bestScore = 0;
+    for (const { im, w } of loose) {
+      if (!ok(im)) continue;
+      let sc = 0; for (const x of w) if (qw.has(x)) sc++;
+      sc -= im.used * .3;
+      if (sc > bestScore) { best = im; bestScore = sc; }
+    }
+    if (!best) {
+      const pool = imgs.filter(ok), gfx = pool.filter(im => im.file.includes('--gfx-'));
+      best = (gfx.length ? gfx : pool.length ? pool : imgs).slice().sort((a, b) => a.used - b.used)[0];
+    }
+    best.used++; q.image = best.file; QIMG[q.id] = best.file;
+  });
 }
 
 // reference tables from the "numbers" screen
