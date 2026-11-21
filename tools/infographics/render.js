@@ -44,6 +44,7 @@ ul{padding-right:26px;font-size:22px;line-height:1.5}
 
 const picksFile = path.join(root, 'content/extra/_image-picks.json');
 const picks = JSON.parse(fs.readFileSync(picksFile, 'utf8'));
+const wordsFile = path.join(root, 'content/extra/_image-words.json'), textOf = {};
 for (const c of cards) {
   const html = `<!doctype html><meta charset="utf-8"><style>${css}</style><div class="card"><h1>${c.title || c.caption.split(":")[0]}</h1>${c.body}</div>`;
   const h = path.join(tmp, c.name + '.html'), png = path.join(tmp, c.topic + c.name + '.png');
@@ -54,8 +55,11 @@ for (const c of cards) {
     execFileSync('magick', [png, '-trim', '+repage', '-bordercolor', 'white', '-border', '24', '-quality', '86', out]);
     const list = picks[topic] = (picks[topic] || []).filter(p => !(p[0] === 'gfx' && p[1] === c.name));
     // The scene-safety card leads its topics; the rest follow the deck images.
+    textOf[`${topic}--gfx-${c.name}.webp`] = ((c.title || '') + ' ' + c.body).replace(/<[^>]+>/g, ' ').replace(/&[a-z]+;/g, ' ').replace(/\s+/g, ' ').trim();
     if (c.first) list.unshift(['gfx', c.name, c.caption]); else list.push(['gfx', c.name, c.caption]);
     console.log('rendered', path.basename(out));
   }
 }
 fs.writeFileSync(picksFile, JSON.stringify(picks, null, 1) + '\n');
+// The text inside each diagram helps match it to questions (tools/export-content.js).
+fs.writeFileSync(wordsFile, JSON.stringify(textOf, null, 1) + '\n');

@@ -48,8 +48,12 @@ import com.taninoni.medic.data.TopicImage
 import com.taninoni.medic.res.Res
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import io.ktor.client.call.body
+import io.ktor.client.request.get
 import org.jetbrains.compose.resources.ExperimentalResourceApi
 import org.jetbrains.compose.resources.decodeToImageBitmap
+
+private val remoteImages by lazy { com.taninoni.medic.pinnedHttpClient {} }
 
 /** Decoded images are kept so scrolling back and the full-screen viewer don't decode again. */
 private val bitmapCache = mutableMapOf<String, ImageBitmap>()
@@ -60,6 +64,8 @@ private fun rememberTopicBitmap(file: String): ImageBitmap? {
     val bitmap by produceState(bitmapCache[file], file) {
         if (value == null) value = withContext(Dispatchers.Default) {
             runCatching { Res.readBytes("files/images/$file").decodeToImageBitmap() }.getOrNull()
+                // Images added after this build come from the server (the site serves the same files).
+                ?: runCatching { remoteImages.get("${com.taninoni.medic.SERVER_URL}/images/$file").body<ByteArray>().decodeToImageBitmap() }.getOrNull()
         }?.also { bitmapCache[file] = it }
     }
     return bitmap

@@ -65,14 +65,17 @@ for (const topic of body.topics) {
 const STOP = new Set([
   'של', 'על', 'את', 'עם', 'אל', 'לא', 'כי', 'גם', 'או', 'אם', 'מה', 'איך', 'למה',
   'בלי', 'לפני', 'אחרי', 'תוך', 'כדי', 'בין', 'כל', 'יש', 'אין', 'זה', 'זאת', 'אלה',
-  'הוא', 'היא', 'הם', 'הן', 'טיפול', 'נפגע', 'חולה', 'מצב', 'סימן', 'סימנים',
+  'הוא', 'היא', 'הם', 'הן', 'סימני', 'טיפול', 'נפגע', 'חולה', 'מצב', 'סימן', 'סימנים',
   'סוגי', 'גורמים', 'שלב', 'אחר', 'מבנה', 'בגוף', 'לעומת', 'תקין', 'באזור', 'מתאים',
 ]);
-const QIMG = {};
+const QIMG = {}, LOOSE = [];
+// Two-letter Hebrew words (רק, אז, עד...) are too common to tie a question to an image; Latin and numbers stay.
+const keep = x => x.length > 2 || /[A-Za-z0-9]/.test(x);
+const IMGWORDS = fs.existsSync(path.join(extraDir, '_image-words.json')) ? JSON.parse(fs.readFileSync(path.join(extraDir, '_image-words.json'), 'utf8')) : {};
 for (const topic of body.topics) {
   const titleWords = words(topic.title);
   const imgs = topic.images.map(im => {
-    const w = new Set([...words(im.caption)].filter(x => !STOP.has(x) && !titleWords.has(x)));
+    const w = new Set([...words(im.caption + ' ' + (IMGWORDS[im.file] || ''))].filter(x => keep(x) && !STOP.has(x) && !titleWords.has(x)));
     return { file: im.file, w, used: 0 };
   });
   if (!imgs.length) continue;
@@ -84,11 +87,13 @@ for (const topic of body.topics) {
     const qw = words(q.q + ' ' + q.options[0] + ' ' + q.explanation);
     let best = null, bestEff = -Infinity;
     for (const im of imgs) {
-      if (im.used >= maxPerImage) continue;
+      // Summary diagrams cover several facts each, so they may illustrate more questions.
+      if (im.used >= (im.file.includes('--gfx-') ? maxPerImage + 6 : maxPerImage)) continue;
       let raw = 0;
       for (const x of im.w) if (qw.has(x)) raw += 1 / (df[x] || 1);
       if (raw <= 0) continue;
-      const eff = raw - im.used * 1.2 - (im.file === prevFile ? 100 : 0);
+      // Prefer a different image than the previous question's, but not at the cost of a clearly weaker match.
+      const eff = raw - im.used * 1.2 - (im.file === prevFile ? raw * .4 : 0);
       if (eff > bestEff) { best = im; bestEff = eff; }
     }
     if (best) {
@@ -99,9 +104,10 @@ for (const topic of body.topics) {
   }
   // Every question gets an image: questions without a specific match take the closest caption
   // (title words allowed, no usage cap), else the topic's least-used summary diagram, else its least-used image.
-  const loose = imgs.map(im => ({ im, w: new Set([...words(topic.images.find(x => x.file === im.file).caption)].filter(x => !STOP.has(x))) }));
+  const loose = imgs.map(im => ({ im, w: new Set([...words(topic.images.find(x => x.file === im.file).caption + ' ' + (IMGWORDS[im.file] || ''))].filter(x => keep(x) && !STOP.has(x))) }));
   topic.questions.forEach((q, k) => {
     if (q.image) return;
+    LOOSE.push([topic.id, q.q]);
     const prev = k > 0 ? topic.questions[k - 1].image : null, next = topic.questions[k + 1]?.image;
     const qw = words(q.q + ' ' + q.options[0] + ' ' + q.explanation);
     const ok = im => im.file !== prev && im.file !== next;
@@ -129,6 +135,7 @@ body.reference = {
   compare: { columns: ['מבוגר', 'ילד', 'תינוק'], rows: new Function('M', 'return ' + rowsSrc)(M).map(r => ({ label: strip(r[0]), values: r.slice(1).map(strip) })) },
   general: new Function('M', 'return ' + genSrc)(M).map(r => ({ label: strip(r[0]), value: strip(r[1]) })),
 };
+if (process.env.DUMP_LOOSE) fs.writeFileSync(process.env.DUMP_LOOSE, LOOSE.map(x => x.join(' | ')).join('\n'));
 const version = crypto.createHash('sha256').update(JSON.stringify(body)).digest('hex').slice(0, 12);
 const out = JSON.stringify({ version, ...body });
 for (const p of ['content/content.json', 'server/src/main/resources/content.json', 'shared/src/commonMain/composeResources/files/content.json']) {
