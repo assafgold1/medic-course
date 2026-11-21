@@ -71,11 +71,50 @@ private fun rememberTopicBitmap(file: String): ImageBitmap? {
     return bitmap
 }
 
+/** Animation details by file name, refreshed from the content (App sets it). */
+object AnimatedImages {
+    var byFile by androidx.compose.runtime.mutableStateOf<Map<String, TopicImage>>(emptyMap())
+    fun of(file: String) = byFile[file]?.takeIf { it.frames > 1 && it.cols > 0 }
+}
+
+/** Width over height of one frame (the whole bitmap for still images). */
+internal fun frameRatio(bitmap: ImageBitmap, file: String): Float {
+    val a = AnimatedImages.of(file) ?: return bitmap.width.toFloat() / bitmap.height
+    val rows = (a.frames + a.cols - 1) / a.cols
+    return (bitmap.width / a.cols).toFloat() / (bitmap.height / rows)
+}
+
+/** Draws a still image, or plays an animated frame grid in a loop. */
+@Composable
+internal fun BitmapView(bitmap: ImageBitmap, file: String, modifier: Modifier, scale: ContentScale) {
+    val a = AnimatedImages.of(file)
+    if (a == null) { Image(bitmap, null, modifier, contentScale = scale); return }
+    val rows = (a.frames + a.cols - 1) / a.cols
+    val fw = bitmap.width / a.cols; val fh = bitmap.height / rows
+    var frame by remember(file) { mutableStateOf(0) }
+    androidx.compose.runtime.LaunchedEffect(file) { while (true) { kotlinx.coroutines.delay(a.frameMs.toLong().coerceAtLeast(40)); frame = (frame + 1) % a.frames } }
+    androidx.compose.foundation.Canvas(modifier) {
+        val sx = size.width / fw; val sy = size.height / fh
+        val (w, h) = when (scale) {
+            ContentScale.FillBounds -> size.width to size.height
+            ContentScale.Crop -> maxOf(sx, sy).let { fw * it to fh * it }
+            else -> minOf(sx, sy).let { fw * it to fh * it }
+        }
+        drawImage(
+            bitmap,
+            srcOffset = androidx.compose.ui.unit.IntOffset((frame % a.cols) * fw, (frame / a.cols) * fh),
+            srcSize = androidx.compose.ui.unit.IntSize(fw, fh),
+            dstOffset = androidx.compose.ui.unit.IntOffset(((size.width - w) / 2).toInt(), ((size.height - h) / 2).toInt()),
+            dstSize = androidx.compose.ui.unit.IntSize(w.toInt(), h.toInt()),
+        )
+    }
+}
+
 @Composable
 internal fun TopicBitmap(file: String, modifier: Modifier, scale: ContentScale) {
     val bitmap = rememberTopicBitmap(file)
     Box(modifier, contentAlignment = Alignment.Center) {
-        if (bitmap != null) Image(bitmap, null, Modifier.fillMaxSize(), contentScale = scale)
+        if (bitmap != null) BitmapView(bitmap, file, Modifier.fillMaxSize(), scale)
     }
 }
 
@@ -164,9 +203,9 @@ fun InlineImage(img: TopicImage) {
     var selected by remember(img.file) { mutableStateOf<Int?>(null) }
     val bitmap = rememberTopicBitmapPublic(img.file)
     Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(p.paper)) {
-        val ratio = bitmap?.let { it.width.toFloat() / it.height } ?: 1.4f
+        val ratio = bitmap?.let { frameRatio(it, img.file) } ?: 1.4f
         androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxWidth().aspectRatio(ratio).background(Color.White)) {
-            if (bitmap != null) Image(bitmap, null, Modifier.fillMaxSize().clickable { ViewerState.show(listOf(img), 0) }, contentScale = ContentScale.FillBounds)
+            if (bitmap != null) BitmapView(bitmap, img.file, Modifier.fillMaxSize().clickable { ViewerState.show(listOf(img), 0) }, ContentScale.FillBounds)
             val w = maxWidth; val h = maxHeight
             img.spots.forEachIndexed { i, s ->
                 val on = selected == i

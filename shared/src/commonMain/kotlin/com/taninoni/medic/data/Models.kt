@@ -32,7 +32,15 @@ data class Topic(
 
 /** A learning image from the course decks; [file] is under composeResources/files/images. */
 @Serializable
-data class TopicImage(val file: String, val caption: String, val spots: List<Spot> = emptyList())
+data class TopicImage(
+    val file: String,
+    val caption: String,
+    val spots: List<Spot> = emptyList(),
+    /** Animated images are a grid of [frames] frames, [cols] per row, each shown for [frameMs]. */
+    val frames: Int = 0,
+    val cols: Int = 0,
+    val frameMs: Int = 0,
+)
 
 /** A tappable point on an anatomy image; [x], [y] are percentages of its width and height. */
 @Serializable

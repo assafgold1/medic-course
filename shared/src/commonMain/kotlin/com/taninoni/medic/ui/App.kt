@@ -80,6 +80,7 @@ fun App() {
     val nav = remember { Nav() }
     LaunchedEffect(Unit) { model.load() }
     LaunchedEffect(Unit) { AnswerSound.preload() }
+    LaunchedEffect(model.content) { AnimatedImages.byFile = model.content?.topics.orEmpty().flatMap { it.images }.associateBy { it.file } }
     var splash by remember { mutableStateOf(true) }
     LaunchedEffect(model.user == null) { if (model.user == null) nav.home() }
     AppBack.handler = { if (ViewerState.isOpen) { ViewerState.close(); true } else nav.back() }
