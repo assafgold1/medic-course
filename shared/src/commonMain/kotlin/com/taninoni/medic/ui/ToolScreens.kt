@@ -104,7 +104,7 @@ fun MetronomeScreen(model: AppModel, nav: Nav) {
     fun fmt(ms: Long) = (ms / 1000).let { "${it / 60}:${(it % 60).toString().padStart(2, '0')}" }
 
     Column(Modifier.fillMaxSize()) {
-        AppBar("מטרונום החייאה", null)
+        AppBar("מטרונום החייאה") { nav.back() }
         Column(Modifier.weight(1f).sheetBackdrop().verticalScroll(rememberScrollState()).padding(top = 16.dp)) {
             Sheet {
                 Text("ספירה קולית וחזותית לתרגול על בובה. כל 2 דקות מתקבלת התראה לניתוח קצב ולהחלפת מעסה.", color = p.muted)

@@ -36,6 +36,7 @@ sealed interface Screen {
     data class Blitz(val items: List<QItem>) : Screen
     data object AnatomyQuiz : Screen
     data object Metronome : Screen
+    data object Aed : Screen
     data object Reference : Screen
     data object Account : Screen
     data object Settings : Screen
@@ -62,7 +63,7 @@ data class Tab(val screen: Screen, val label: String, val icon: androidx.compose
 val TABS = listOf(
     Tab(Screen.Home, "נושאים", Icons.basics),
     Tab(Screen.Picker, "תרגול", Icons.check),
-    Tab(Screen.Metronome, "מטרונום", Icons.timer),
+    Tab(Screen.Aed, "דפיברילטור", Icons.dev),
     Tab(Screen.Reference, "מספרים", Icons.hash),
     Tab(Screen.Settings, "הגדרות", Icons.gear),
 )
@@ -106,6 +107,7 @@ fun App() {
                         is Screen.Blitz -> BlitzScreen(model, nav, s)
                         Screen.AnatomyQuiz -> AnatomyQuizScreen(model, nav)
                         Screen.Metronome -> MetronomeScreen(model, nav)
+                        Screen.Aed -> AedScreen(model, nav)
                         Screen.Reference -> ReferenceScreen(model, nav)
                         Screen.Account -> AccountScreen(model, nav)
                         Screen.Settings -> SettingsScreen(model, nav)

@@ -19,3 +19,9 @@ expect object Sound {
     /** Plays a short 16-bit mono PCM WAV clip (answer feedback). */
     fun clip(wav: ByteArray)
 }
+
+/** Spoken device prompts (Hebrew text-to-speech) for the defibrillator simulator. */
+expect object Speech {
+    fun say(text: String)
+    fun stop()
+}

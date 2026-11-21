@@ -34,3 +34,17 @@ actual object Sound {
 
 actual fun pinnedHttpClient(config: io.ktor.client.HttpClientConfig<*>.() -> Unit): io.ktor.client.HttpClient =
     io.ktor.client.HttpClient(io.ktor.client.engine.darwin.Darwin) { config() }
+
+@OptIn(kotlinx.cinterop.ExperimentalForeignApi::class)
+actual object Speech {
+    private val synth by lazy { platform.AVFAudio.AVSpeechSynthesizer() }
+    actual fun say(text: String) {
+        runCatching { platform.AVFAudio.AVAudioSession.sharedInstance().setCategory(platform.AVFAudio.AVAudioSessionCategoryPlayback, null) }
+        synth.stopSpeakingAtBoundary(platform.AVFAudio.AVSpeechBoundary.AVSpeechBoundaryImmediate)
+        val u = platform.AVFAudio.AVSpeechUtterance.speechUtteranceWithString(text)
+        u.voice = platform.AVFAudio.AVSpeechSynthesisVoice.voiceWithLanguage("he-IL")
+        u.rate = 0.5f
+        synth.speakUtterance(u)
+    }
+    actual fun stop() { synth.stopSpeakingAtBoundary(platform.AVFAudio.AVSpeechBoundary.AVSpeechBoundaryImmediate) }
+}

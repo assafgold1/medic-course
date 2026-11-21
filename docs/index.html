@@ -5,7 +5,30 @@
 <link rel="icon" type="image/png" href="brand/uh-icon.png">
 <link rel="apple-touch-icon" href="brand/uh-icon.png">
 <meta name="description" content="מסלול חובש: לימוד, תרגול ומבחנים לקורס חובשים">
-<style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+<style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}
+/* AED simulator */
+.panel{background:var(--paper);border-radius:18px;padding:14px 16px;margin:8px 0 14px}.panel p{margin:6px 0;line-height:1.55}
+.muted{color:var(--muted)}
+.aed-pt{font-weight:600;margin:4px 0 10px}
+.aed-dev{background:linear-gradient(#F1F2F4,#D5D8DD);border:2px solid #B9BDC4;border-radius:34px;padding:18px;box-shadow:0 10px 26px rgba(0,0,0,.18);margin:6px 0 16px;color:#374151}
+.aed-top{display:flex;align-items:center;gap:8px;margin-bottom:14px}.aed-top b{color:#B91C1C;font-size:22px;font-weight:900}.aed-top span{flex:1;font-size:13px;color:#4B5563}
+.asi{width:12px;height:12px;border-radius:50%;background:#22C55E;animation:asi 1.8s steps(1) infinite}.asi.on{animation:none;background:#16A34A}@keyframes asi{50%{background:#9CA3AF}}
+.lcd{background:#0B1A12;border:3px solid #374151;border-radius:16px;padding:14px;color:#DCFCE7}
+.lcd-r{display:flex;justify-content:space-between;color:#86EFAC;font-size:13px;min-height:18px}
+.lcd-t{font-size:19px;font-weight:700;line-height:1.4;min-height:54px;margin:6px 0}
+#ecg{width:100%;height:70px;display:block}
+.aed-btns{display:flex;justify-content:space-evenly;margin-top:18px;text-align:center}.aed-btns small{display:block;margin-top:6px;font-weight:600;font-size:13px}
+.pwr,.shk{width:84px;height:84px;border-radius:50%;border:4px solid #E5E7EB;color:#fff;font-size:34px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.pwr{background:radial-gradient(#4ADE80,#15803D);box-shadow:0 6px 14px rgba(21,128,61,.35)}
+.shk{background:#9A6B4F;cursor:default}.shk.armed{background:#C2410C;cursor:pointer}.shk.flash{background:#FF7A1A;box-shadow:0 0 26px #FF7A1A}
+.aed-h{font-size:16px;margin:12px 0 6px}
+.aed-row{display:flex;gap:12px}.aed-row .aed-btn{flex:1}
+.aed-btn{display:block;text-align:center;min-height:52px;border:0;border-radius:16px;background:var(--paper);color:var(--ink);font:inherit;font-weight:700;padding:14px 12px;cursor:pointer;text-decoration:none;margin:8px 0}
+.aed-btn.warn{background:var(--bad-soft);color:var(--bad)}.aed-btn.ok{background:var(--good-soft);color:var(--good)}.aed-btn.wide{width:100%}
+a.aed-btn{color:var(--blue)}
+.torso{width:100%;max-width:420px;display:block;margin:6px auto 12px;background:var(--paper);border-radius:18px;color:var(--muted)}.torso [data-spot]{cursor:pointer}
+.dl{display:flex;gap:10px}.dl i{font-style:normal;font-weight:800;color:var(--muted)}.dl.g i{color:var(--good)}.dl.b i{color:var(--bad)}
+</style>
 </head><body>
 <title>מסלול חובש</title>
 <meta name="claude:viewport-fit-sides" content="cover">
@@ -3364,6 +3387,7 @@ function route(){
   else if (h==='exam') startQuiz(pickQs(GROUP_ORDER, 30), {title:'מבחן מסכם', back:'home', kind:'exam', cats:GROUP_ORDER, instant:false, timeLimit:30*60});
   else if (h==='smart') startQuiz(smartPick(20), {title:'תרגול חכם', back:'home', kind:'smart', cats:GROUP_ORDER, instant:true});
   else if (h==='mistakes') startQuiz(shuffle(mistakesList()).slice(0,50), {title:'תרגול טעויות', back:'practice', kind:'mistakes', cats:GROUP_ORDER, instant:true});
+  else if (h==='aed') renderAed();
   else if (h==='cpr-metronome') renderMetronome();
   else if (h==='numbers') renderNumbers();
   else if (h==='instructor') renderInstructor();
@@ -3385,7 +3409,7 @@ function renderHome(){
     <div class="brand">
       <span class="mark"><img src="brand/uh-icon.png" alt="" width="30" height="30"></span>
       <b>מסלול חובש</b>
-      <nav><a class="icon-btn" href="#cpr-metronome" aria-label="מטרונום החייאה" title="מטרונום">${P('<circle cx="12" cy="13" r="7"/><path d="M12 9.5V13l2.5 2M9.5 3h5"/>')}</a>
+      <nav><a class="icon-btn" href="#aed" aria-label="סימולטור דפיברילטור" title="דפיברילטור">${P('<path d="M13.5 3 5.5 13.5h6l-1 7.5 8-10.5h-6l1-7.5z"/>')}</a>
       <a class="icon-btn" href="#numbers" aria-label="מספרים לשינון" title="מספרים">${P('<path d="M5 9h14M5 15h14M10 4 8 20M16 4l-2 16"/>')}</a>
       ${acct.user?.instructor?`<a class="icon-btn" href="#instructor" aria-label="התקדמות החניכים" title="מדריכים">${P('<circle cx="9" cy="8" r="3"/><path d="M3.5 19a5.5 5.5 0 0 1 11 0M16 5.5a2.5 2.5 0 0 1 0 5M20.5 19a4.5 4.5 0 0 0-3.5-4.4"/>')}</a>`:''}
       ${acct.user?`<button class="icon-btn" id="logout" aria-label="יציאה" title="יציאה">${P('<path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3M10 17l-5-5 5-5M5 12h11"/>')}</button>`:''}</nav>
@@ -3680,6 +3704,220 @@ function renderCards(t, pane){
   draw();
 }
 
+
+/* ===================== AED SIMULATOR ===================== */
+// Semi-automatic AED drill modelled on the course's LifeLine routine: green button, pads,
+// "analysing, don't touch", shock advised or not (random rhythm), charge, flashing shock button, 2 min CPR, repeat.
+function renderAed(){
+  const S = {phase:'off', rhythm:'VF', child:false, pads:null, spots:[], shocks:0, cycles:0, cleared:false, log:[], token:0, t0:0, readyAt:0, ctx:null, ecgT:0, raf:0, flash:false, count:0, breathing:false, left:0};
+  const RH = {VF:['פרפור חדרים (VF)',true], VT:['VT ללא דופק',true], ASY:['אסיסטולה',false], ROSC:['קצב סדיר (ROSC)',false]};
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
+  const alive = tok => tok === S.token;
+  const soundOn = () => store.get('sound', true) !== false;
+  function tone(freq, dur, vol=.25, sweepTo){
+    if (!soundOn()) return;
+    try{
+      S.ctx = S.ctx || new (window.AudioContext||window.webkitAudioContext)();
+      const o = S.ctx.createOscillator(), g = S.ctx.createGain(), t = S.ctx.currentTime;
+      o.frequency.setValueAtTime(freq, t); if (sweepTo) o.frequency.linearRampToValueAtTime(sweepTo, t+dur);
+      g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol, t+.01); g.gain.setValueAtTime(vol, t+dur-.03); g.gain.linearRampToValueAtTime(0, t+dur);
+      o.connect(g).connect(S.ctx.destination); o.start(t); o.stop(t+dur+.02);
+    }catch(e){}
+  }
+  function thump(){
+    if (!soundOn()) return;
+    try{ const c = S.ctx, n = c.sampleRate*.35, b = c.createBuffer(1, n, c.sampleRate), d = b.getChannelData(0);
+      for (let i=0;i<n;i++) d[i] = (Math.random()*2-1)*Math.exp(-i/c.sampleRate*14)*.8;
+      const s = c.createBufferSource(); s.buffer = b; s.connect(c.destination); s.start() }catch(e){}
+  }
+  function say(t){
+    S.prompt = t; draw();
+    if (!soundOn() || !window.speechSynthesis) return;
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(t); u.lang = 'he-IL';
+    const v = speechSynthesis.getVoices().find(v => v.lang && v.lang.startsWith('he')); if (v) u.voice = v;
+    speechSynthesis.speak(u);
+  }
+  const log = (ok, text) => S.log.push([ok, text]);
+  function stop(){ S.token++; S.flash=false; if (window.speechSynthesis) speechSynthesis.cancel() }
+
+  function nextRhythm(afterShock){
+    const r = Math.random();
+    if (S.rhythm==='ROSC') return;
+    if (afterShock && S.shocks>=1 && r<.4) S.rhythm='ROSC';
+    else if (afterShock && r<.55) S.rhythm='ASY';
+    else if (afterShock) S.rhythm = Math.random()<.5 ? 'VF' : S.rhythm;
+    else if (S.rhythm==='ASY' && r<.3) S.rhythm='VF';
+  }
+  async function analyze(){
+    const tok = ++S.token; S.phase='analyze'; S.cleared=false;
+    say('מנתח את קצב הלב. אל תגעו במטופל.');
+    await sleep(6500); if (!alive(tok)) return;
+    if (RH[S.rhythm][1]){
+      S.phase='charging'; say('מומלץ שוק. התרחקו מהמטופל.');
+      tone(500, 3, .18, 1900); await sleep(3200); if (!alive(tok)) return;
+      S.phase='ready'; S.readyAt=Date.now(); say('לחצו על כפתור השוק המהבהב.');
+      const until = Date.now()+20000;
+      while (Date.now()<until){ S.flash=!S.flash; if (S.flash) tone(1500,.18,.25); draw(); await sleep(500); if (!alive(tok)) return }
+      S.flash=false; log(false,'לא ניתן שוק תוך 20 שניות, והמכשיר ביטל את הטעינה.');
+      say('השוק בוטל. התחילו החייאה.'); await sleep(2000); if (alive(tok)) cpr();
+    } else if (S.rhythm==='ROSC'){
+      S.phase='check'; say('לא מומלץ שוק. בדקו נשימה ודופק.');
+    } else { say('לא מומלץ שוק.'); await sleep(2200); if (alive(tok)) cpr() }
+  }
+  async function cpr(){
+    const tok = ++S.token; S.phase='cpr'; S.cycles++; S.count=0;
+    say('התחילו החייאה. 30 לחיצות ו-2 הנשמות.');
+    await sleep(2600); if (!alive(tok)) return;
+    const end = Date.now()+120000;
+    while (Date.now()<end){
+      S.left = Math.ceil((end-Date.now())/1000);
+      if (S.count>=30){ S.breathing=true; S.count=0; draw(); for (let i=0;i<2;i++){ tone(660,.35,.2); await sleep(1000); if (!alive(tok)) return } S.breathing=false }
+      S.count++; tone(1250,.045,.3); draw();
+      await sleep(60000/110); if (!alive(tok)) return;
+    }
+    analyze();
+  }
+  async function powerOn(){
+    S.log=[]; S.shocks=0; S.cycles=0; S.spots=[]; S.pads=null;
+    S.child = Math.random()<.25;
+    S.rhythm = Math.random()<.7 ? (Math.random()<.75?'VF':'VT') : 'ASY';
+    S.t0 = Date.now();
+    const tok = ++S.token; S.phase='pads'; S.prompt=''; draw();
+    tone(960, 1.1, .25); await sleep(1200); if (!alive(tok)) return;
+    say('חשפו את חזה המטופל. בחרו מדבקות והדביקו אותן כמו בציור.');
+  }
+  function padsDone(){
+    const gotChild = S.pads==='child';
+    if (gotChild && !S.child) log(false,'מדבקות ילדים על מבוגר: אסור. האנרגיה תהיה נמוכה מדי.');
+    else if (!gotChild && S.child) log(null,'מדבקות מבוגר על ילד: מותר רק כשאין מדבקות ילדים, ובמיקום קדמי-אחורי.');
+    else log(true,'בחרת את המדבקות הנכונות.');
+    if (!gotChild){
+      const ok = S.spots.length===2 && S.spots.includes(0) && S.spots.includes(1);
+      log(ok, ok ? 'מיקום המדבקות נכון: מתחת לעצם הבריח מימין, ובצד שמאל מתחת לבית השחי.' : 'מיקום מדבקות שגוי. מבוגר: מתחת לעצם הבריח הימנית, ובצד שמאל כ-8 ס״מ מתחת לבית השחי.');
+    }
+    const secs = Math.round((Date.now()-S.t0)/1000);
+    log(secs<=40 ? true : null, `המדבקות הודבקו אחרי ${secs} שניות מההפעלה.`);
+    analyze();
+  }
+  async function touch(){
+    if (S.phase==='analyze'){
+      log(false,'נגעת במטופל בזמן ניתוח הקצב. האבחון התחיל מחדש.');
+      const tok = ++S.token; say('זוהתה תנועה. הפסיקו כל מגע במטופל.'); await sleep(2500); if (alive(tok)) analyze();
+    } else if (S.phase==='charging' || S.phase==='ready'){ S.cleared=false; log(false,'נגעת במטופל בזמן טעינה. לפני שוק אף אחד לא נוגע.'); draw() }
+  }
+  async function shock(){
+    if (S.phase!=='ready') return;
+    S.shocks++;
+    log(S.cleared, S.cleared ? 'הכרזת "התרחקו" לפני השוק.' : 'נתת שוק בלי לוודא שאף אחד לא נוגע ובלי להכריז.');
+    const secs = Math.round((Date.now()-S.readyAt)/1000);
+    log(secs<=5 ? true : null, `שוק ${S.shocks} ניתן ${secs} שניות אחרי שהמכשיר היה מוכן (${S.pads==='child'?50:150} ג׳אול).`);
+    const tok = ++S.token; S.flash=false; thump(); say('השוק ניתן.');
+    await sleep(1600); if (!alive(tok)) return;
+    nextRhythm(true); cpr();
+  }
+  function finish(pulse){
+    stop();
+    log(pulse, pulse ? 'בדקת נשימה ודופק אחרי שהמכשיר לא המליץ על שוק. המטופל חזר לדופק.' : 'לפי המכשיר הקצב סדיר: בודקים דופק לפני שממשיכים עיסויים.');
+    S.phase='done'; S.prompt='הסימולציה הסתיימה'; draw();
+  }
+
+  const on = () => S.phase!=='off';
+  const fmt = s => `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;
+  function lcdText(){
+    if (S.phase==='off') return 'לחצו על הכפתור הירוק כדי להפעיל';
+    if (S.phase==='cpr') return S.breathing ? 'הנשמה' : `לחיצה ${S.count} מתוך 30`;
+    return S.prompt || '';
+  }
+  function torso(){
+    const C = [[36,27],[70,62],[64,27],[34,70]];
+    return `<svg class="torso" viewBox="0 0 100 87" aria-label="בחירת מיקום מדבקות">
+      <path d="M42 3h16l2 7 24 5 2 69H14l2-69 24-5z" fill="#F2C7A5" stroke="#C08A63" stroke-width=".8"/>
+      <path d="M22 16l24 1M54 17l24-1M50 19v31" stroke="#C08A63" stroke-width=".8"/><circle cx="38" cy="38" r="1.2" fill="#C08A63"/><circle cx="62" cy="38" r="1.2" fill="#C08A63"/>
+      ${C.map(([x,y],i)=> S.spots.includes(i)
+        ? `<rect data-spot="${i}" x="${x-8}" y="${y*.87-6}" width="16" height="12" rx="2.5" fill="#fff" stroke="#6B7280" stroke-width=".8"/>`
+        : `<circle data-spot="${i}" cx="${x}" cy="${y*.87}" r="5.5" fill="rgba(234,88,12,.2)" stroke="#EA580C" stroke-width=".8"/>`).join('')}
+      <text x="3" y="6" font-size="4" fill="currentColor" opacity=".6" direction="rtl">ימין המטופל</text></svg>`;
+  }
+  function controls(){
+    const p = S.phase;
+    if (p==='pads') return `<h3 class="aed-h">1. בחרו מדבקות</h3>
+      <div class="seg"><button data-pads="adult" class="${S.pads==='adult'?'on':''}">מדבקות מבוגר</button><button data-pads="child" class="${S.pads==='child'?'on':''}">מדבקות ילד</button></div>
+      ${S.pads==='adult' ? `<h3 class="aed-h">2. הקישו על שני המקומות הנכונים להדבקה</h3>${torso()}` : S.pads==='child' ? '<p class="muted">מדבקות ילדים: אחת במרכז החזה ואחת במרכז הגב, מולה.</p>' : ''}
+      <button class="btn red wide" id="padsOk" ${(S.pads==='child'||(S.pads==='adult'&&S.spots.length===2))?'':'disabled'}>הדבקתי, המשך</button>`;
+    if (p==='analyze'||p==='charging'||p==='ready') return `<div class="aed-row"><button class="aed-btn" id="touch">נוגע במטופל / ממשיך לעסות</button>
+      ${p!=='analyze'?`<button class="aed-btn ${S.cleared?'ok':'warn'}" id="clear">${S.cleared?'הוכרז: כולם התרחקו':'להכריז: "התרחקו!"'}</button>`:''}</div>`;
+    if (p==='cpr') return `<button class="aed-btn wide" id="skip">דלג לסוף 2 הדקות (תרגול)</button>`;
+    if (p==='check') return `<h3 class="aed-h">המכשיר לא ממליץ על שוק. מה עושים עכשיו?</h3>
+      <button class="aed-btn ok wide" id="pulse">בודקים נשימה ודופק</button><button class="aed-btn wide" id="nopulse">ממשיכים עיסויים בלי לבדוק</button>`;
+    return '';
+  }
+  function debrief(){
+    if (!(S.phase==='done' || (S.phase==='off' && S.log.length))) return '';
+    const good = S.log.filter(l=>l[0]===true).length, bad = S.log.filter(l=>l[0]===false).length;
+    return `<h2 class="sec">סיכום התרגול</h2><div class="panel"><b>${S.shocks} שוקים · ${S.cycles} סבבי החייאה · ${good} נכון · ${bad} לתיקון</b>
+      ${S.log.map(([ok,t])=>`<p class="dl ${ok===true?'g':ok===false?'b':''}"><i>${ok===true?'✓':ok===false?'✗':'•'}</i>${esc(t)}</p>`).join('')}</div>`;
+  }
+  function draw(){
+    const p = S.phase, armed = p==='ready';
+    const box = document.getElementById('aed'); if (!box) return;
+    box.innerHTML = `
+      ${p==='off' ? '<p class="lede">תרגול מלא של הפעלת דפיברילטור חצי-אוטומטי. בכל הפעלה המטופל והקצב נבחרים באקראי.</p>'
+        : p!=='done' ? `<p class="aed-pt">מטופל: ${S.child?'ילד בן 5':'מבוגר'} · דום לב${S.shocks?` · שוקים: ${S.shocks}`:''}</p>` : ''}
+      <div class="aed-dev">
+        <div class="aed-top"><b>AED</b><span>דפיברילטור חצי-אוטומטי</span><i class="asi ${on()?'on':''}"></i></div>
+        <div class="lcd">
+          <div class="lcd-r"><span>${on() && S.pads && p!=='pads' ? (S.pads==='child'?'50J · מדבקות ילד':'150J · מדבקות מבוגר') : ''}</span><span>${p==='cpr'?fmt(S.left):''}</span></div>
+          <div class="lcd-t">${esc(lcdText())}</div>
+          <canvas id="ecg" height="70"></canvas>
+        </div>
+        <div class="aed-btns">
+          <div><button class="pwr" id="pwr" aria-label="${on()?'כיבוי':'הפעלה'}">⏻</button><small>${on()?'כיבוי':'הפעלה'}</small></div>
+          <div><button class="shk ${armed?'armed':''} ${armed&&S.flash?'flash':''}" id="shk" ${armed?'':'disabled'} aria-label="שוק"><svg viewBox="0 0 24 24" width="40" height="40"><path d="M13.5 3 5.5 13.5h6l-1 7.5 8-10.5h-6l1-7.5z" fill="none" stroke="#fff" stroke-width="2" stroke-linejoin="round"/></svg></button><small>שוק</small></div>
+        </div>
+      </div>
+      ${controls()}
+      ${debrief()}
+      ${p==='off' ? `<h2 class="sec">זוכרים</h2><div class="panel">
+        <p>• קודם בטיחות: הזירה בטוחה, כפפות, ואז מתחילים.</p><p>• מחברים דפיברילטור מוקדם, ובן הזוג ממשיך לעסות בזמן ההדבקה.</p>
+        <p>• בזמן ניתוח הקצב ולפני שוק: אף אחד לא נוגע.</p><p>• אחרי שוק, או כשלא מומלץ שוק: מיד חוזרים לעיסויים, 2 דקות.</p></div>
+        <a class="aed-btn wide" href="#cpr-metronome">מטרונום חופשי לתרגול על בובה</a>` : ''}`;
+    const $ = id => document.getElementById(id);
+    $('pwr').onclick = () => { if (S.phase==='off'||S.phase==='done') powerOn(); else { stop(); S.phase='off'; draw() } };
+    $('shk').onclick = shock;
+    box.querySelectorAll('[data-pads]').forEach(b => b.onclick = () => { S.pads=b.dataset.pads; S.spots=[]; draw() });
+    box.querySelectorAll('[data-spot]').forEach(c => c.onclick = () => { const i=+c.dataset.spot; if (S.spots.includes(i)) S.spots=S.spots.filter(x=>x!==i); else if (S.spots.length<2) S.spots.push(i); draw() });
+    if ($('padsOk')) $('padsOk').onclick = padsDone;
+    if ($('touch')) $('touch').onclick = touch;
+    if ($('clear')) $('clear').onclick = () => { if (!S.cleared){ S.cleared=true; if (soundOn()&&window.speechSynthesis){ speechSynthesis.cancel(); const u=new SpeechSynthesisUtterance('זהירות, אני נותן שוק. כולם להתרחק.'); u.lang='he-IL'; speechSynthesis.speak(u) } draw() } };
+    if ($('skip')) $('skip').onclick = () => { log(null,'דילגת על סבב החייאה (בתרגול בלבד).'); stop(); nextRhythm(false); analyze() };
+    if ($('pulse')) $('pulse').onclick = () => finish(true);
+    if ($('nopulse')) $('nopulse').onclick = () => finish(false);
+  }
+  function ecg(){
+    const c = document.getElementById('ecg');
+    if (c){
+      const w = c.width = c.clientWidth * devicePixelRatio, h = c.height = 70 * devicePixelRatio, x = c.getContext('2d'), p = S.phase, mid = h/2;
+      S.ecgT += 1/60;
+      const show = ['analyze','charging','ready','check','done'].includes(p);
+      x.clearRect(0,0,w,h); x.strokeStyle = '#4ADE80'; x.lineWidth = 2.5*devicePixelRatio; x.beginPath();
+      for (let i=0;i<=160;i++){
+        const s = S.ecgT - 3 + 3*i/160, X = w*i/160; let y = 0;
+        if (p==='cpr') y = .55*Math.sin(2*Math.PI*s*110/60);
+        else if (show && S.rhythm==='VF') y = .45*Math.sin(2*Math.PI*5.3*s)+.3*Math.sin(2*Math.PI*7.9*s+1)+.2*Math.sin(2*Math.PI*3.1*s);
+        else if (show && S.rhythm==='VT') y = .85*Math.sin(2*Math.PI*3.2*s);
+        else if (show && S.rhythm==='ASY') y = .04*Math.sin(2*Math.PI*.7*s);
+        else if (show){ const ph = (s*1.25)%1, d = ph-.3; y = Math.abs(d)<.02 ? (d<0?-1:1)*(1-Math.abs(d)/.02)*.9 : .12*Math.exp(-Math.pow((ph-.55)*12,2)) }
+        const Y = mid - y*h*.45; i ? x.lineTo(X,Y) : x.moveTo(X,Y);
+      }
+      x.stroke();
+    }
+    S.raf = requestAnimationFrame(ecg);
+  }
+  $app.innerHTML = appbar('סימולטור דפיברילטור','home') + `<main class="sheet"><div id="aed"></div></main>`;
+  draw(); ecg();
+  cleanup = () => { stop(); cancelAnimationFrame(S.raf) };
+}
 
 function renderMetronome(){
   const st = {bpm: store.get('bpm',110), mode: store.get('mode','30:2'), running:false, n:0, phase:'comp', t0:0, cycleT0:0, cycles:0, total:0, to:null, clock:null, ctx:null, wake:null, alarmUntil:0, nextBeat:0, breathT:0};

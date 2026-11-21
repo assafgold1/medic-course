@@ -31,3 +31,25 @@ actual object Sound {
 /** Platform HTTP client. HTTPS only (res/xml/network_security.xml). */
 actual fun pinnedHttpClient(config: io.ktor.client.HttpClientConfig<*>.() -> Unit): io.ktor.client.HttpClient =
     io.ktor.client.HttpClient(io.ktor.client.engine.okhttp.OkHttp) { config() }
+
+/** Set by MainActivity so platform services that need a Context (text-to-speech) can reach it. */
+object AndroidContext { var app: android.content.Context? = null }
+
+actual object Speech {
+    private var tts: android.speech.tts.TextToSpeech? = null
+    private var ready = false
+    private var pending: String? = null
+    private fun engine(): android.speech.tts.TextToSpeech? {
+        val ctx = AndroidContext.app ?: return null
+        return tts ?: android.speech.tts.TextToSpeech(ctx) { status ->
+            ready = status == android.speech.tts.TextToSpeech.SUCCESS
+            if (ready) { tts?.language = java.util.Locale("he", "IL"); pending?.let { say(it) }; pending = null }
+        }.also { tts = it }
+    }
+    actual fun say(text: String) {
+        val e = engine() ?: return
+        if (!ready) { pending = text; return }
+        e.speak(text, android.speech.tts.TextToSpeech.QUEUE_FLUSH, null, "aed")
+    }
+    actual fun stop() { tts?.stop() }
+}
