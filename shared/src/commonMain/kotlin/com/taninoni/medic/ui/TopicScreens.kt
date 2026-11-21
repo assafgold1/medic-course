@@ -54,7 +54,7 @@ fun TopicScreen(model: AppModel, nav: Nav, id: String) {
                 Eyebrow("${model.category(t.cat)?.name.orEmpty()} · נושא ${t.number}")
                 Segmented(listOf("learn" to "לימוד", "cards" to "כרטיסיות", "quiz" to "תרגול"), tab) { tab = it }
                 when (tab) {
-                    "learn" -> Learn(t) { tab = it }
+                    "learn" -> Learn(t, model.content?.protocols.orEmpty().filter { it.topic == t.id }, { nav.go(Screen.ProtocolView(it)) }) { tab = it }
                     "cards" -> FlashCards(t)
                     else -> {
                         val items = model.allItems.filter { it.topic.id == t.id }
@@ -73,7 +73,7 @@ fun TopicScreen(model: AppModel, nav: Nav, id: String) {
 }
 
 @Composable
-private fun Learn(t: Topic, goTab: (String) -> Unit) {
+private fun Learn(t: Topic, protocols: List<com.taninoni.medic.data.Protocol>, openProtocol: (String) -> Unit, goTab: (String) -> Unit) {
     val p = Pal
     if (t.keyPoints.isNotEmpty()) Column(
         Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(p.blueSoft).padding(16.dp),
@@ -85,6 +85,19 @@ private fun Learn(t: Topic, goTab: (String) -> Unit) {
                 Text("✓", color = p.blue, fontSize = 16.sp, fontWeight = FontWeight.Bold)
                 Text(line, color = p.ink, fontSize = 16.sp, lineHeight = 24.sp, fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f))
             }
+        }
+    }
+    // The topic's field protocols, one tap away.
+    protocols.forEach { pr ->
+        Row(
+            Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(p.badSoft).clickable { openProtocol(pr.id) }.padding(horizontal = 16.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Column(Modifier.weight(1f)) {
+                Text("פרוטוקול", color = p.bad, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                Text(pr.title, color = p.ink, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+            }
+            Text("‹", color = p.bad, fontSize = 22.sp)
         }
     }
     t.note?.let {

@@ -38,6 +38,8 @@ sealed interface Screen {
     data object Metronome : Screen
     data object Aed : Screen
     data object Reference : Screen
+    data object Protocols : Screen
+    data class ProtocolView(val id: String) : Screen
     data object Account : Screen
     data object Settings : Screen
     data object Instructor : Screen
@@ -110,6 +112,8 @@ fun App() {
                         Screen.Metronome -> MetronomeScreen(model, nav)
                         Screen.Aed -> AedScreen(model, nav)
                         Screen.Reference -> ReferenceScreen(model, nav)
+                        Screen.Protocols -> ProtocolsScreen(model, nav)
+                        is Screen.ProtocolView -> ProtocolScreen(model, nav, s.id)
                         Screen.Account -> AccountScreen(model, nav)
                         Screen.Settings -> SettingsScreen(model, nav)
                         Screen.Instructor -> InstructorScreen(model, nav)

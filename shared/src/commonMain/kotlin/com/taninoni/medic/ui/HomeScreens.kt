@@ -112,6 +112,18 @@ fun HomeScreen(model: AppModel, nav: Nav) {
                         }
                     }
                 }
+                if (queryState.text.isEmpty() && model.content?.protocols.orEmpty().isNotEmpty()) Row(
+                    Modifier.padding(top = 10.dp).fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(p.blueSoft)
+                        .clickable { nav.go(Screen.Protocols) }.padding(horizontal = 16.dp, vertical = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    Text("☰", color = p.blue, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                    Column(Modifier.weight(1f)) {
+                        Text("פרוטוקולים", color = p.blue, fontSize = 16.sp, fontWeight = FontWeight.ExtraBold)
+                        Text("${model.content?.protocols?.size} תרשימי זרימה: מה עושים, בסדר הנכון", color = p.ink, fontSize = 13.5.sp)
+                    }
+                }
                 model.lastTopicId?.let { model.topic(it) }?.takeIf { queryState.text.isEmpty() }?.let { t ->
                     Row(
                         Modifier.padding(top = 14.dp).fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(p.blueSoft)

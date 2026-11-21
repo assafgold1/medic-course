@@ -44,7 +44,9 @@ ul{padding-right:26px;font-size:22px;line-height:1.5}
 
 const picksFile = path.join(root, 'content/extra/_image-picks.json');
 const picks = JSON.parse(fs.readFileSync(picksFile, 'utf8'));
-const wordsFile = path.join(root, 'content/extra/_image-words.json'), textOf = {};
+const wordsFile = path.join(root, 'content/extra/_image-words.json');
+// Keep the words of other images (protocols); replace this script's own.
+const textOf = Object.fromEntries(Object.entries(fs.existsSync(wordsFile) ? JSON.parse(fs.readFileSync(wordsFile, 'utf8')) : {}).filter(([f]) => !f.includes('--gfx-')));
 for (const c of cards) {
   const html = `<!doctype html><meta charset="utf-8"><style>${css}</style><div class="card"><h1>${c.title || c.caption.split(":")[0]}</h1>${c.body}</div>`;
   const h = path.join(tmp, c.name + '.html'), png = path.join(tmp, c.topic + c.name + '.png');

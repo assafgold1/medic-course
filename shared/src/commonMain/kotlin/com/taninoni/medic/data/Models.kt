@@ -9,7 +9,19 @@ data class Content(
     val categories: List<Category>,
     val topics: List<Topic>,
     val reference: Reference? = null,
+    val protocols: List<Protocol> = emptyList(),
 )
+
+/** A field protocol (tools/protocols/data.js). [file] is its rendered diagram among the topic's images. */
+@Serializable
+data class Protocol(val id: String, val topic: String, val group: String, val title: String, val file: String = "", val steps: List<ProtocolStep>)
+
+/** k: alarm, step, if, stop or note. An "if" step asks [h] and has two branches. */
+@Serializable
+data class ProtocolStep(val k: String, val h: String, val d: String = "", val yes: ProtocolBranch? = null, val no: ProtocolBranch? = null)
+
+@Serializable
+data class ProtocolBranch(val h: String, val items: List<String>)
 
 @Serializable
 data class Category(val id: String, val name: String, val short: String)

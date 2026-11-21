@@ -101,6 +101,16 @@ h3{font-size:18px}
 .qclock{font-weight:700;font-size:13.5px;padding:4px 10px;border-radius:999px;background:var(--paper);font-family:var(--mono)}
 .qclock.low{background:var(--bad-soft);color:var(--bad)}
 .keypts{background:var(--blue-soft);border-radius:18px;padding:16px 18px;margin-bottom:14px}.keypts b{color:var(--blue);display:block;margin-bottom:6px}.keypts p{margin:6px 0;font-weight:500;line-height:1.55}
+.protolink{display:flex;gap:12px;align-items:center;margin-top:10px;padding:14px 16px;border-radius:16px;background:var(--blue-soft);color:var(--ink);text-decoration:none}.protolink span{font-size:20px;color:var(--blue)}.protolink b{display:block;color:var(--blue)}
+.protochip{display:block;background:var(--bad-soft,#fbe4e4);border-radius:18px;padding:14px 16px;margin-bottom:14px;text-decoration:none;color:var(--ink)}.protochip small{display:block;color:var(--bad,#d92d2d);font-weight:700}.protochip b{font-weight:600}
+.plist{background:var(--paper);border-radius:18px;padding:4px 16px;margin:8px 0 16px}.plist a{display:flex;align-items:center;gap:12px;padding:14px 0;color:var(--ink);text-decoration:none;font-weight:600}.plist a+a{border-top:1px solid var(--hair,#eee)}.plist i{font-style:normal;width:32px;height:32px;border-radius:50%;background:var(--blue-soft);color:var(--blue);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;flex:none}
+.pf{display:flex;flex-direction:column}.pf .ar{align-self:center;color:#F0A477;font-size:12px;line-height:1;padding:4px 0}.pf .ar:before{content:"";display:block;width:3px;height:14px;background:#F0A477;margin:0 auto 1px}
+.pstep{display:flex;gap:12px;align-items:center;background:var(--paper);border:1.5px solid var(--line,#eee);border-radius:16px;padding:14px}.pstep .n{flex:none;width:34px;height:34px;border-radius:50%;background:#EA580C;color:#fff;font-weight:800;display:flex;align-items:center;justify-content:center}.pstep b{display:block}.pstep small{display:block;color:var(--muted);font-size:14.5px;line-height:1.45;margin-top:2px}
+.palarm{background:#B91C1C;color:#fff;border-radius:16px;padding:14px;font-weight:700;line-height:1.45}.pstop{background:#FEE2E2;border:2px solid #B91C1C;color:#7F1D1D;border-radius:16px;padding:14px;font-weight:700;line-height:1.45}
+.pnote{background:#FFEDD5;color:#7C2D12;border-radius:14px;padding:14px;margin-top:10px;line-height:1.5}
+.pq{align-self:center;background:#9A3412;color:#fff;border-radius:16px;padding:11px 18px;font-weight:700;text-align:center}
+.pbr{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}.pbr>div{background:var(--paper);border:2px solid #93C5FD;border-radius:16px;padding:12px}.pbr>div.no{border-color:#C4B5FD}
+.pbr em{font-style:normal;display:inline-block;background:#2563EB;color:#fff;border-radius:99px;padding:1px 10px;font-size:12.5px;font-weight:800}.pbr .no em{background:#7C3AED}.pbr b{display:block;margin:4px 0}.pbr ul{margin:0;padding-right:18px;font-size:14px;line-height:1.5}
 .safety{display:flex;gap:12px;align-items:center;width:100%;margin-top:14px;padding:14px 16px;border:0;border-radius:16px;background:var(--bad-soft,#fbe4e4);color:var(--ink);text-align:right;font:inherit;cursor:pointer}.safety span{font-size:22px;color:var(--bad,#d92d2d)}.safety b{display:block;color:var(--bad,#d92d2d)}.safety small{color:var(--ink)}
 .resume{display:flex;flex-direction:column;gap:2px;margin-top:14px;padding:14px 16px;border-radius:16px;background:var(--blue-soft);color:var(--ink);text-decoration:none}
 .resume small{color:var(--muted);font-size:13px}.resume b{font-size:16px;font-weight:600}
@@ -3390,6 +3400,8 @@ function route(){
   else if (h==='aed') renderAed();
   else if (h==='cpr-metronome') renderMetronome();
   else if (h==='numbers') renderNumbers();
+  else if (h==='protocols') renderProtocols();
+  else if (h.startsWith('protocol-')) renderProtocol(h.slice(9));
   else if (h==='instructor') renderInstructor();
   else if (h.startsWith('student-')) renderStudent(+h.slice(8));
   else if (topicById(h)) renderTopic(h, 'learn');
@@ -3401,6 +3413,30 @@ document.addEventListener('click', e => { if (e.target.closest('#logout')) logou
 const esc = v => String(v).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
 
 /* ===================== HOME ===================== */
+
+/* ===================== PROTOCOLS (tools/protocols/data.js, via extra.js) ===================== */
+function renderProtocols(){
+  const groups = {}; (window.PROTOCOLS||[]).forEach(p => (groups[p.group] = groups[p.group] || []).push(p));
+  $app.innerHTML = appbar('פרוטוקולים','home') + `<main class="sheet"><p class="muted">מה עושים, בסדר הנכון. כל פרוטוקול בנוי מהחומר של הקורס.</p>
+    ${Object.entries(groups).map(([g, ps]) => `<h3 class="aed-h">${g}</h3><div class="plist">${ps.map(p => `<a href="#protocol-${p.id}"><i>${p.steps.filter(s=>s.k==='step').length}</i>${p.title}</a>`).join('')}</div>`).join('')}</main>`;
+}
+function protocolHtml(p){
+  let n = 0;
+  return `<div class="pf">${p.steps.map((s, i) => (i && s.k !== 'note' ? '<span class="ar">▼</span>' : '') + (
+    s.k === 'alarm' ? `<div class="palarm">⚠ ${s.h}</div>` :
+    s.k === 'stop' ? `<div class="pstop">✋ ${s.h}</div>` :
+    s.k === 'note' ? `<div class="pnote">💡 ${s.h}</div>` :
+    s.k === 'if' ? `<div class="pq">${s.h}</div><div class="pbr">${[['yes','כן'],['no','לא']].map(([k, l]) => `<div class="${k}"><em>${l}</em><b>${s[k].h}</b><ul>${s[k].items.map(x => `<li>${x}</li>`).join('')}</ul></div>`).join('')}</div>` :
+    `<div class="pstep"><span class="n">${++n}</span><div><b>${s.h}</b>${s.d ? `<small>${s.d}</small>` : ''}</div></div>`)).join('')}</div>`;
+}
+function renderProtocol(id){
+  const p = (window.PROTOCOLS||[]).find(x => x.id === id); if (!p) return renderProtocols();
+  const t = topicById(p.topic), im = t && t.images.find(x => x[0] === p.file);
+  $app.innerHTML = appbar(p.title,'protocols') + `<main class="sheet">${protocolHtml(p)}
+    <div class="aed-row" style="margin-top:12px">${t ? `<a class="aed-btn" href="#${t.id}">לנושא: ${t.title}</a>` : ''}${im ? `<button class="aed-btn" id="pdiag">תרשים להדפסה</button>` : ''}</div></main>`;
+  const b = document.getElementById('pdiag'); if (b) b.onclick = () => openViewer([im], 0);
+}
+
 function renderHome(){
   const total = ALLQ.length, right = ALLQ.filter(q=>qstate[q.id]===1).length;
   const ov = Math.round(right/total*100);
@@ -3425,6 +3461,7 @@ function renderHome(){
   <main class="sheet lift">
     <input class="search" id="find" type="search" placeholder="חיפוש נושא, למשל: לידה, כוויות, אמבו" aria-label="חיפוש נושא" autocomplete="off">
     <button class="safety" id="safetyCard"><span>⚠</span><div><b>מגיעים לזירה? קודם כול בטיחות</b><small>עוצרים · סוקרים · מתמגנים · מדווחים · ניגשים</small></div></button>
+    ${(window.PROTOCOLS||[]).length?`<a class="protolink" href="#protocols"><span>☰</span><div><b>פרוטוקולים</b><small>${PROTOCOLS.length} תרשימי זרימה: מה עושים, בסדר הנכון</small></div></a>`:''}
     ${(()=>{ const t = topicById(store.get('lastTopic','')); return t ? `<a class="resume" href="#${t.id}"><small>להמשיך מאיפה שעצרת</small><b>${t.title}</b></a>` : '' })()}
     ${GROUP_ORDER.map(g=>{ const m=mastery(g); return `
       <section class="group" data-g="${g}">
@@ -3496,7 +3533,7 @@ function renderTopic(id, tab){
   $app.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>renderTopic(id,b.dataset.tab));
   const pane = document.getElementById('pane');
   if (tab==='learn'){
-    pane.innerHTML = `${(t.key||[]).length?`<div class="keypts"><b>בקצרה</b>${t.key.map(k=>`<p>✓ ${k}</p>`).join('')}</div>`:''}${t.note?`<div class="callout">${t.note}</div>`:''}
+    pane.innerHTML = `${(window.PROTOCOLS||[]).filter(p=>p.topic===t.id).map(p=>`<a class="protochip" href="#protocol-${p.id}"><small>פרוטוקול</small><b>${p.title}</b></a>`).join('')}${(t.key||[]).length?`<div class="keypts"><b>בקצרה</b>${t.key.map(k=>`<p>✓ ${k}</p>`).join('')}</div>`:''}${t.note?`<div class="callout">${t.note}</div>`:''}
       <div class="nums">${t.nums.map(([v,l])=>`<div class="num"><b>${v}</b><span>${l}</span></div>`).join('')}</div>
       ${galleryLeft(t).length?`<div class="gal-h"><h3>תמונות להמחשה</h3><span>${galleryLeft(t).length} תמונות</span></div>
       <div class="gal">${galleryLeft(t).map(([f,c])=>[f,c,t.images.findIndex(x=>x[0]===f)]).map(([f,c,k])=>`<button data-img="${k}"><img src="images/${f}" alt="" loading="lazy"><span>${c}</span></button>`).join('')}</div>`:''}
