@@ -16,6 +16,33 @@ const letters = items => `<div class="letters">${items.map(([l, he, d]) =>
   `<div class="let"><div class="L">${esc(l)}</div><div><div class="lh">${esc(he)}</div><div class="ld">${esc(d)}</div></div></div>`).join('')}</div>`;
 const note = s => `<div class="note">${esc(s)}</div>`;
 
+// Sympathetic (right, red) vs parasympathetic (left, green), one organ per row.
+const SYM = '#b91c1c', SYMBG = '#fee2e2', PARA = '#15803d', PARABG = '#dcfce7';
+const autonomic = rows => `<div style="display:grid;grid-template-columns:1fr 190px 1fr;gap:10px;font-size:23px;text-align:center">
+  <div style="background:${SYM};color:#fff;border-radius:22px;padding:14px 10px"><div style="font-size:30px;font-weight:900">סימפתטית</div><div style="font-size:20px;font-weight:600">מצבי לחץ · ״הילחם או ברח״</div></div>
+  <div></div>
+  <div style="background:${PARA};color:#fff;border-radius:22px;padding:14px 10px"><div style="font-size:30px;font-weight:900">פאראסימפתטית</div><div style="font-size:20px;font-weight:600">מצבי רגיעה · ״מנוחה ועיכול״</div></div>
+  ${rows.map(([icon, organ, s, p]) => `
+  <div style="background:${s ? SYMBG : 'transparent'};color:${SYM};border-radius:18px;padding:12px 10px;font-weight:800;display:flex;align-items:center;justify-content:center">${esc(s)}</div>
+  <div style="background:#fff;border:2px solid #fbe0cf;border-radius:18px;padding:8px 6px;display:flex;flex-direction:column;align-items:center;justify-content:center"><div style="font-size:34px;line-height:1.1">${icon}</div><div style="font-size:21px;font-weight:800">${esc(organ)}</div></div>
+  <div style="background:${p ? PARABG : 'transparent'};color:${PARA};border-radius:18px;padding:12px 10px;font-weight:800;display:flex;align-items:center;justify-content:center">${esc(p)}</div>`).join('')}
+</div>`;
+
+// What the two systems look like on a patient.
+const autonomicField = () => `<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+  <div style="background:#fff;border:3px solid #f29b9b;border-radius:24px;padding:18px 20px">
+    <div style="font-size:27px;font-weight:900;color:${SYM}">סימפתטית: הלם מפוצה</div>
+    <div style="font-size:20px;color:#7a5a48;margin:4px 0 8px">הגוף מנסה לשמור דם למוח, ללב ולכליות</div>
+    <ul><li><b>דופק מהיר</b>: הסימן הראשון</li><li>עור חיוור, קריר ולח</li><li>נשימה מהירה ועמוקה</li><li>מעט שתן, עיכול מואט</li><li>לחץ דם עדיין תקין</li></ul>
+  </div>
+  <div style="background:#fff;border:3px solid #86d3a5;border-radius:24px;padding:18px 20px">
+    <div style="font-size:27px;font-weight:900;color:${PARA}">פאראסימפתטית: גירוי וואגוס</div>
+    <div style="font-size:20px;color:#7a5a48;margin:4px 0 8px">עצב הוואגוס (עצב גולגולת 10) הוא העצב המרכזי שלה</div>
+    <ul><li><b>הלב מאט</b></li><li>לחץ הדם יכול לרדת</li><li>אחד הגורמים להתעלפות</li></ul>
+  </div>
+</div>
+<div class="stop" style="background:#fff1e7;border-color:#ea580c;color:#7c2d12">לחץ דם תקין לא שולל הלם: הפיצוי הסימפתטי מסתיר אותו.<br>כשהפיצוי קורס, הנפגע מתדרדר מהר מאוד.</div>`;
+
 module.exports = [
   { topic: 'infant-cpr', name: 'glance', caption: 'החייאת תינוק במבט אחד: דופק, עיסויים, עומק, קצב ויחס', body: tiles([
     ['ברכיאלי', 'בדיקת דופק', 'בעורק הזרוע'],
@@ -224,6 +251,19 @@ module.exports = [
     ['12', 'זוגות עצבי גולגולת', 'ו-31 זוגות עצבי שדרה'], ['עורפית', 'האונה האחורית', 'מעבדת ראייה'],
     ['סימפתטית', 'מצב לחץ', 'מאיצה לב, מרחיבה סימפונות'], ['פאראסימפתטית', 'מנוחה', 'מאטה לב, עיכול'],
   ], 2) + note('תאי עצב רגישים מאוד להיפוקסיה ולא מתחדשים: הנזק בלתי הפיך.') },
+
+  { topic: 'neuro', name: 'autonomic', title: 'סימפתטית מול פאראסימפתטית', caption: 'המערכת האוטונומית: סימפתטית ופאראסימפתטית, ההשפעה על האישונים, הרוק, הלב, הסימפונות, העיכול והשתן', body: autonomic([
+    ['👁️', 'אישונים', 'מתרחבים', 'מצטמצמים'],
+    ['👄', 'רוק', 'נעצר', 'מוגבר'],
+    ['❤️', 'קצב הלב', 'מואץ', 'מואט'],
+    ['🫁', 'סימפונות', 'מתרחבים', 'מצטמצמים'],
+    ['🍽️', 'עיכול', 'נעצר', 'מתעודד'],
+    ['⚗️', 'כבד וכיס מרה', 'הכבד מגביר ייצור גלוקוז', 'כיס המרה פעיל יותר'],
+    ['💧', 'שתן', 'נעצר', 'ייצור שתן'],
+    ['⚡', 'הורמונים', 'אדרנלין ונוראדרנלין', ''],
+  ]) + note('שתי המערכות פועלות כל הזמן על אותם איברים. המצב קובע מי מהן דומיננטית.') },
+
+  { topic: 'neuro', also: ['shock-bleeding'], name: 'autonomic-field', title: 'המערכת האוטונומית בשטח', caption: 'סימפתטית ופאראסימפתטית בשטח: פיצוי בהלם מול גירוי עצב הוואגוס', body: autonomicField() },
 
   { topic: 'resp', name: 'lungs', title: 'הריאות במבט אחד', caption: 'אונות הריאה, הסימפונות, קרום הפלאורה ונשימה תאית', body: table(
     ['', 'ימין', 'שמאל'], [['אונות', '3', '2'], ['סימפונות משניים', '3, אחד לכל אונה', '2']]) + tiles([
