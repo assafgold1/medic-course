@@ -1,7 +1,7 @@
 {
  "cardio--anim-cycle.webp": {
-  "frames": 30,
+  "frames": 25,
   "cols": 5,
-  "frameMs": 120
+  "frameMs": 80
  }
 }
