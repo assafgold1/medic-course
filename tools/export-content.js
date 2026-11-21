@@ -18,6 +18,7 @@ const t = TOPICS.TOPICS.slice().sort((a,b)=>TOPICS.ORDER.indexOf(a.id)-TOPICS.OR
 // (content/images, listed in content/extra/_image-picks.json). Appended after the site's own material.
 const extraDir = path.join(root, 'content/extra');
 const picks = JSON.parse(fs.readFileSync(path.join(extraDir, '_image-picks.json'), 'utf8'));
+const KEY = JSON.parse(fs.readFileSync(path.join(extraDir, '_key-points.json'), 'utf8'));
 const imageFile = (tid, deck, img) => `${tid}--${deck}-${img}.webp`;
 const EXTRA = {};
 for (const x of t) {
@@ -25,7 +26,7 @@ for (const x of t) {
   const e = fs.existsSync(f) ? JSON.parse(fs.readFileSync(f, 'utf8')) : { sections: [], quiz: [] };
   const images = (picks[x.id] || []).map(([deck, img, caption]) => [imageFile(x.id, deck, img), caption])
     .filter(([file]) => fs.existsSync(path.join(root, 'content/images', file)));
-  EXTRA[x.id] = { learn: e.sections.map(s => ({ h: s.h, steps: !!s.steps, items: s.items })), quiz: e.quiz, images };
+  EXTRA[x.id] = { learn: e.sections.map(s => ({ h: s.h, steps: !!s.steps, items: s.items })), quiz: e.quiz, images, key: KEY[x.id] || [] };
 }
 const body = {
   passMark: TOPICS.PASS,
@@ -36,6 +37,7 @@ const body = {
     sections: x.learn.concat(EXTRA[x.id].learn).map(s => ({ title: s.h, steps: !!s.steps, items: s.items })),
     questions: x.quiz.concat(EXTRA[x.id].quiz).map((q, k) => ({ id: `${x.id}#${k}`, q: q[0], options: q[1], explanation: q[2] })),
     images: EXTRA[x.id].images.map(([file, caption]) => ({ file, caption })),
+    keyPoints: EXTRA[x.id].key,
   })),
 };
 const PREFIX = /^[והבלמשכ]{1,2}(?=[\u05d0-\u05ea]{3})/;

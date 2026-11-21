@@ -26,6 +26,8 @@ data class Topic(
     val sections: List<Section> = emptyList(),
     val questions: List<Question> = emptyList(),
     val images: List<TopicImage> = emptyList(),
+    /** Three or four lines to remember, shown first on the topic page. */
+    val keyPoints: List<String> = emptyList(),
 )
 
 /** A learning image from the course decks; [file] is under composeResources/files/images. */

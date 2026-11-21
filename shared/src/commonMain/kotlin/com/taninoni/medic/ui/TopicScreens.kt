@@ -75,6 +75,18 @@ fun TopicScreen(model: AppModel, nav: Nav, id: String) {
 @Composable
 private fun Learn(t: Topic, goTab: (String) -> Unit) {
     val p = Pal
+    if (t.keyPoints.isNotEmpty()) Column(
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(p.blueSoft).padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Text("בקצרה", color = p.blue, fontSize = 15.sp, fontWeight = FontWeight.ExtraBold)
+        t.keyPoints.forEach { line ->
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text("✓", color = p.blue, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                Text(line, color = p.ink, fontSize = 16.sp, lineHeight = 24.sp, fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f))
+            }
+        }
+    }
     t.note?.let {
         Box(Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(p.midSoft).padding(16.dp)) { Text(it, color = p.ink, fontSize = 15.sp, lineHeight = 22.sp) }
     }

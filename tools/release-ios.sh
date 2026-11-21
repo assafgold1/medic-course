@@ -12,7 +12,7 @@ DD="$HOME/Library/Developer/MedicCourse"
 node tools/export-content.js
 cd iosApp
 xcodebuild -project iosApp.xcodeproj -scheme iosApp -configuration Release -destination 'generic/platform=iOS' \
-  -archivePath "$DD/Medic-$BUILD.xcarchive" -allowProvisioningUpdates \
+  -archivePath "$DD/Medic-$BUILD.xcarchive" -derivedDataPath "$DD/DerivedData" -allowProvisioningUpdates \
   MARKETING_VERSION="${VERSION:-2.0}" CURRENT_PROJECT_VERSION="$BUILD" archive -quiet
 xcodebuild -exportArchive -archivePath "$DD/Medic-$BUILD.xcarchive" -exportOptionsPlist ExportOptions.plist \
   -exportPath "$DD/export-$BUILD" -allowProvisioningUpdates

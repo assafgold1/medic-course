@@ -97,6 +97,21 @@ fun HomeScreen(model: AppModel, nav: Nav) {
                     .padding(start = 20.dp, end = 20.dp, top = 26.dp, bottom = 4.dp),
             ) {
                 SearchField(queryState)
+                // Scene safety comes before everything else, so it stays one tap away on the home screen.
+                model.topic("approach")?.images?.firstOrNull { it.file.endsWith("gfx-safety.webp") }?.takeIf { queryState.text.isEmpty() }?.let { img ->
+                    Row(
+                        Modifier.padding(top = 14.dp).fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(p.badSoft)
+                            .clickable { ViewerState.show(listOf(img), 0) }.padding(horizontal = 16.dp, vertical = 14.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        Text("⚠", color = p.bad, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+                        Column(Modifier.weight(1f)) {
+                            Text("מגיעים לזירה? קודם כול בטיחות", color = p.bad, fontSize = 16.sp, fontWeight = FontWeight.ExtraBold)
+                            Text("עוצרים · סוקרים · מתמגנים · מדווחים · ניגשים", color = p.ink, fontSize = 13.5.sp)
+                        }
+                    }
+                }
                 model.lastTopicId?.let { model.topic(it) }?.takeIf { queryState.text.isEmpty() }?.let { t ->
                     Row(
                         Modifier.padding(top = 14.dp).fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(p.blueSoft)
