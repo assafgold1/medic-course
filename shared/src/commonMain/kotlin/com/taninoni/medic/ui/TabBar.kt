@@ -89,7 +89,7 @@ fun TabBar(nav: Nav, modifier: Modifier = Modifier) {
                 val tint by animateColorAsState(if (on) p.blue else p.ink.copy(alpha = .62f))
                 val lift by animateFloatAsState(if (on) 1.08f else 1f, spring(dampingRatio = .45f, stiffness = 500f))
                 Column(
-                    Modifier.weight(1f).fillMaxHeight().bouncy(label = tab.label, interaction = src, pressedScale = .9f) { nav.tab(tab.screen) },
+                    Modifier.weight(1f).fillMaxHeight().bouncy(label = tab.label, interaction = src, pressedScale = .9f) { if (!on) tick(); nav.tab(tab.screen) },
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterVertically),
                 ) {

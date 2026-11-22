@@ -166,7 +166,6 @@ private fun Learn(t: Topic, protocols: List<com.taninoni.medic.data.Protocol>, o
 @Composable
 private fun FlashCards(t: Topic) {
     val p = Pal
-    val soundOn = LocalSoundOn.current
     var deck by remember(t.id) { mutableStateOf(t.questions.shuffled()) }
     var i by remember(t.id) { mutableIntStateOf(0) }
     var known by remember(t.id) { mutableIntStateOf(0) }
@@ -175,7 +174,7 @@ private fun FlashCards(t: Topic) {
 
     if (i >= deck.size) {
         LaunchedEffect(i) {
-            if (soundOn) AnswerSound.play(if (known * 2 >= deck.size) Sfx.PASS else Sfx.FAIL)
+            AnswerSound.play(if (known * 2 >= deck.size) Sfx.PASS else Sfx.FAIL)
         }
         Panel(spacing = 12.dp) {
             Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -200,7 +199,7 @@ private fun FlashCards(t: Topic) {
     Box(
         Modifier.fillMaxWidth().heightIn(min = 320.dp)
             .graphicsLayer { rotationY = rot; cameraDistance = 14 * density }
-            .bouncy(pressedScale = .98f) { flipped = !flipped; if (soundOn) AnswerSound.play(Sfx.FLIP) }
+            .bouncy(pressedScale = .98f) { flipped = !flipped; AnswerSound.play(Sfx.FLIP) }
             .then(
                 if (rot > 90f) Modifier.glass(shape, elevation = 20.dp).background(Brush.linearGradient(listOf(p.bandA, p.bandB)))
                 else Modifier.glass(shape, elevation = 16.dp),
@@ -208,20 +207,24 @@ private fun FlashCards(t: Topic) {
             .padding(28.dp),
         contentAlignment = Alignment.Center,
     ) {
-        Column(Modifier.graphicsLayer { rotationY = if (rot > 90f) 180f else 0f }, verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        // Everything centred, so the label sits right over the text whatever its length.
+        Column(
+            Modifier.fillMaxWidth().graphicsLayer { rotationY = if (rot > 90f) 180f else 0f },
+            horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
             if (rot <= 90f) {
                 Text("שאלה", color = p.blue, fontSize = 13.sp, fontWeight = FontWeight.Black)
-                Text(q.q, color = p.ink, fontSize = 21.sp, fontWeight = FontWeight.Bold, lineHeight = 30.sp)
+                Text(q.q, color = p.ink, fontSize = 21.sp, fontWeight = FontWeight.Bold, lineHeight = 30.sp, textAlign = TextAlign.Center)
             } else {
                 Text("תשובה", color = Color.White.copy(.85f), fontSize = 13.sp, fontWeight = FontWeight.Black)
-                Text(q.options[0], color = Color.White, fontSize = 21.sp, fontWeight = FontWeight.Bold, lineHeight = 30.sp)
-                Text(q.explanation, color = Color.White.copy(.92f), fontSize = 15.sp, lineHeight = 22.sp)
+                Text(q.options[0], color = Color.White, fontSize = 21.sp, fontWeight = FontWeight.Bold, lineHeight = 30.sp, textAlign = TextAlign.Center)
+                Text(q.explanation, color = Color.White.copy(.92f), fontSize = 15.sp, lineHeight = 22.sp, textAlign = TextAlign.Center)
             }
         }
     }
     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-        GhostButton("עוד לא", Modifier.weight(1f)) { if (soundOn) AnswerSound.play(Sfx.WRONG); again = again + q; i++ }
-        PrimaryButton("ידעתי", Modifier.weight(1f), icon = Icons.check) { if (soundOn) AnswerSound.play(Sfx.CORRECT); known++; i++ }
+        GhostButton("עוד לא", Modifier.weight(1f)) { AnswerSound.play(Sfx.WRONG); again = again + q; i++ }
+        PrimaryButton("ידעתי", Modifier.weight(1f), icon = Icons.check) { AnswerSound.play(Sfx.CORRECT); known++; i++ }
     }
 }
 

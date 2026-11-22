@@ -80,6 +80,23 @@ private enum class Phase { OFF, PADS, ANALYZE, CHARGING, READY, CPR, CHECK, DONE
 
 private data class LogLine(val ok: Boolean?, val text: String)
 
+/**
+ * The device's voice: fixed recordings in one voice through a small loudspeaker, like a real AED
+ * (files/sounds/aed, made by tools/aed_voice.py). Falls back to text-to-speech if a file is missing.
+ */
+private object AedVoice {
+    private val ids = listOf("pads", "analyze", "advised", "press", "cancelled", "cpr", "no_shock_check", "no_shock", "motion", "shocked", "clear")
+    private val cache = mutableMapOf<String, ByteArray>()
+    suspend fun preload() {
+        for (id in ids) if (id !in cache) runCatching { com.taninoni.medic.res.Res.readBytes("files/sounds/aed/$id.wav") }.getOrNull()?.let { cache[id] = it }
+    }
+    fun play(id: String, fallback: String) {
+        val wav = cache[id]
+        if (wav != null) { Speech.stop(); Sound.voice(wav) } else { Sound.stopVoice(); Speech.say(fallback) }
+    }
+    fun stop() { Sound.stopVoice(); Speech.stop() }
+}
+
 /** Generated device sounds (16-bit mono PCM WAV). */
 private object AedTones {
     private const val RATE = 22050
@@ -138,10 +155,12 @@ fun AedScreen(model: AppModel, nav: Nav) {
     var startedAt by remember { mutableLongStateOf(0L) }
     var shockReadyAt by remember { mutableLongStateOf(0L) }
 
-    fun say(text: String) { prompt = text; if (sound) Speech.say(text) }
+    LaunchedEffect(Unit) { AedVoice.preload() }
+    /** Shows [text] on the device screen and plays the recorded prompt [id] (spoken by TTS if the file is missing). */
+    fun say(id: String, text: String) { prompt = text; if (sound) AedVoice.play(id, text) }
     fun play(w: ByteArray) { if (sound) Sound.clip(w) }
     fun go(block: suspend () -> Unit) { job?.cancel(); job = scope.launch { block() } }
-    DisposableEffect(Unit) { onDispose { job?.cancel(); Speech.stop() } }
+    DisposableEffect(Unit) { onDispose { job?.cancel(); AedVoice.stop() } }
 
     fun nextRhythm(afterShock: Boolean) {
         val r = Random.nextDouble()
@@ -158,7 +177,7 @@ fun AedScreen(model: AppModel, nav: Nav) {
     lateinit var analyze: () -> Unit
     fun cpr() = go {
         phase = Phase.CPR; cycles++
-        say("התחילו החייאה. 30 לחיצות ו-2 הנשמות.")
+        say("cpr", "התחילו החייאה. 30 לחיצות ו-2 הנשמות.")
         delay(2600)
         val end = nowMillis() + 120_000
         count = 0
@@ -179,25 +198,25 @@ fun AedScreen(model: AppModel, nav: Nav) {
     analyze = {
         go {
             phase = Phase.ANALYZE; cleared = false
-            say("מנתח את קצב הלב. אל תגעו במטופל.")
+            say("analyze", "מנתח את קצב הלב. אל תגעו במטופל.")
             delay(6500)
             if (rhythm.shockable) {
                 phase = Phase.CHARGING
-                say("מומלץ שוק. התרחקו מהמטופל.")
+                say("advised", "מומלץ שוק. התרחקו מהמטופל.")
                 play(AedTones.charge); delay(3200)
                 phase = Phase.READY; shockReadyAt = nowMillis()
-                say("לחצו על כפתור השוק המהבהב.")
+                say("press", "לחצו על כפתור השוק המהבהב.")
                 val until = nowMillis() + 20_000
                 while (nowMillis() < until) { flash = !flash; if (flash) play(AedTones.ready); delay(500) }
                 flash = false
                 log += LogLine(false, "לא ניתן שוק תוך 20 שניות, והמכשיר ביטל את הטעינה.")
-                say("השוק בוטל. התחילו החייאה.")
+                say("cancelled", "השוק בוטל. התחילו החייאה.")
                 delay(2000); cpr()
             } else if (rhythm == Rhythm.ROSC) {
                 phase = Phase.CHECK
-                say("לא מומלץ שוק. בדקו נשימה ודופק.")
+                say("no_shock_check", "לא מומלץ שוק. בדקו נשימה ודופק.")
             } else {
-                say("לא מומלץ שוק.")
+                say("no_shock", "לא מומלץ שוק.")
                 delay(2200); cpr()
             }
         }
@@ -210,8 +229,8 @@ fun AedScreen(model: AppModel, nav: Nav) {
         startedAt = nowMillis()
         go {
             phase = Phase.PADS
-            play(AedTones.power); delay(1200)
-            say("חשפו את חזה המטופל. בחרו מדבקות והדביקו אותן כמו בציור.")
+            play(AedTones.power); tick(); delay(1200)
+            say("pads", "חשפו את חזה המטופל. בחרו מדבקות והדביקו אותן כמו בציור.")
         }
     }
 
@@ -237,7 +256,7 @@ fun AedScreen(model: AppModel, nav: Nav) {
         when (phase) {
             Phase.ANALYZE -> {
                 log += LogLine(false, "נגעת במטופל בזמן ניתוח הקצב. האבחון התחיל מחדש.")
-                 go { say("זוהתה תנועה. הפסיקו כל מגע במטופל."); delay(2500); analyze() }
+                 go { say("motion", "זוהתה תנועה. הפסיקו כל מגע במטופל."); delay(2500); analyze() }
             }
             Phase.CHARGING, Phase.READY -> { cleared = false; log += LogLine(false, "נגעת במטופל בזמן טעינה. לפני שוק אף אחד לא נוגע.") }
             else -> {}
@@ -253,7 +272,8 @@ fun AedScreen(model: AppModel, nav: Nav) {
         go {
             flash = false
             play(AedTones.shock)
-            say("השוק ניתן.")
+            if (FeedbackPrefs.haptics) runCatching { com.taninoni.medic.Haptics.heavy() }
+            say("shocked", "השוק ניתן.")
             delay(1600)
             nextRhythm(afterShock = true)
             cpr()
@@ -266,14 +286,14 @@ fun AedScreen(model: AppModel, nav: Nav) {
     }
 
     fun finish(pulse: Boolean) {
-        job?.cancel(); Speech.stop()
+        job?.cancel(); AedVoice.stop()
         log += if (pulse) LogLine(true, "בדקת נשימה ודופק אחרי שהמכשיר לא המליץ על שוק. המטופל חזר לדופק.")
         else LogLine(false, "לפי המכשיר הקצב סדיר: בודקים דופק לפני שממשיכים עיסויים.")
         phase = Phase.DONE
         prompt = "הסימולציה הסתיימה"
     }
 
-    fun stopAll() { job?.cancel(); Speech.stop(); phase = Phase.OFF; flash = false; prompt = "לחצו על הכפתור הירוק כדי להפעיל" }
+    fun stopAll() { job?.cancel(); AedVoice.stop(); phase = Phase.OFF; flash = false; prompt = "לחצו על הכפתור הירוק כדי להפעיל" }
 
     GlassPage("סימולטור דפיברילטור", null) {
             if (phase == Phase.OFF) Text(
@@ -297,7 +317,7 @@ fun AedScreen(model: AppModel, nav: Nav) {
                 Phase.ANALYZE, Phase.CHARGING, Phase.READY -> Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     SimButton("נוגע במטופל / ממשיך לעסות", p.paper, p.ink, Modifier.weight(1f)) { touch() }
                     if (phase != Phase.ANALYZE) SimButton(if (cleared) "הוכרז: כולם התרחקו" else "להכריז: \"התרחקו!\"", if (cleared) p.goodSoft else p.badSoft, if (cleared) p.good else p.bad, Modifier.weight(1f)) {
-                        if (!cleared) { cleared = true; if (sound) Speech.say("זהירות, אני נותן שוק. כולם להתרחק.") }
+                        if (!cleared) { cleared = true; if (sound) AedVoice.play("clear", "זהירות, אני נותן שוק. כולם להתרחק.") }
                     }
                 }
                 Phase.CPR -> SimButton("דלג לסוף 2 הדקות (תרגול)", p.paper, p.muted, Modifier.fillMaxWidth()) { skipCpr() }

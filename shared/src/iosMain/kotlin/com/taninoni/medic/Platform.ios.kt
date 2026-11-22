@@ -33,6 +33,17 @@ actual object Sound {
         player.currentTime = 0.0
         player.play()
     }
+
+    private var voicePlayer: platform.AVFAudio.AVAudioPlayer? = null
+    @OptIn(kotlinx.cinterop.ExperimentalForeignApi::class, kotlinx.cinterop.BetaInteropApi::class)
+    actual fun voice(wav: ByteArray) {
+        voicePlayer?.stop()
+        // A device prompt must be heard: play even with the silent switch on, like the spoken prompts did.
+        runCatching { platform.AVFAudio.AVAudioSession.sharedInstance().setCategory(platform.AVFAudio.AVAudioSessionCategoryPlayback, null) }
+        val data: NSData = wav.usePinned { NSData.create(bytes = it.addressOf(0), length = wav.size.toULong()) }
+        voicePlayer = platform.AVFAudio.AVAudioPlayer(data = data, error = null).also { it.prepareToPlay(); it.play() }
+    }
+    actual fun stopVoice() { voicePlayer?.stop(); voicePlayer = null }
 }
 
 actual fun pinnedHttpClient(config: io.ktor.client.HttpClientConfig<*>.() -> Unit): io.ktor.client.HttpClient =
@@ -80,4 +91,13 @@ actual object Reminders {
             center.addNotificationRequest(request, withCompletionHandler = null)
         }
     }
+}
+
+actual object Haptics {
+    actual fun light() = platform.UIKit.UIImpactFeedbackGenerator(platform.UIKit.UIImpactFeedbackStyle.UIImpactFeedbackStyleLight).impactOccurred()
+    actual fun heavy() = platform.UIKit.UIImpactFeedbackGenerator(platform.UIKit.UIImpactFeedbackStyle.UIImpactFeedbackStyleHeavy).impactOccurred()
+    private fun notify(type: platform.UIKit.UINotificationFeedbackType) = platform.UIKit.UINotificationFeedbackGenerator().notificationOccurred(type)
+    actual fun success() = notify(platform.UIKit.UINotificationFeedbackType.UINotificationFeedbackTypeSuccess)
+    actual fun warning() = notify(platform.UIKit.UINotificationFeedbackType.UINotificationFeedbackTypeWarning)
+    actual fun error() = notify(platform.UIKit.UINotificationFeedbackType.UINotificationFeedbackTypeError)
 }

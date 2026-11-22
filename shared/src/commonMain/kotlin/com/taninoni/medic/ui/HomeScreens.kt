@@ -2,6 +2,7 @@ package com.taninoni.medic.ui
 
 import androidx.compose.foundation.border
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.DisposableEffect
@@ -122,21 +123,36 @@ fun HomeScreen(model: AppModel, nav: Nav) {
                 QuickTiles(model, nav)
             }
         }
-        model.categories.forEach { cat ->
+        if (!searching) item(key = "chips") {
+            CategoryChips(model, Modifier.padding(top = 26.dp, bottom = 2.dp))
+        }
+        val filter = if (searching) null else model.homeFilter
+        model.categories.filter { filter == null || it.id == filter }.forEach { cat ->
             val topics = shown.filter { it.cat == cat.id }
             if (topics.isNotEmpty()) {
+                // Searching or showing one chapter always unfolds it.
+                val folded = !searching && filter == null && cat.id in model.collapsedCats
                 item(key = "h-${cat.id}") {
                     val items = model.itemsOf(cat.id)
+                    val turn by animateFloatAsState(if (folded) 90f else 0f, spring(dampingRatio = .7f, stiffness = 400f))
                     Row(
-                        Modifier.pageItem().padding(top = 26.dp, bottom = 10.dp, start = 4.dp, end = 4.dp),
+                        Modifier.pageItem().padding(top = 20.dp, bottom = 8.dp).clip(RoundedCornerShape(18.dp))
+                            .bouncy(pressedScale = .98f, enabled = !searching && filter == null) { tick(); model.toggleCollapsed(cat.id) }
+                            .padding(horizontal = 4.dp, vertical = 6.dp),
                         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp),
                     ) {
                         Icon(Icons.forCategory(cat.id), null, tint = p.blue, modifier = Modifier.size(22.dp))
-                        Text(cat.name, color = p.ink, fontSize = 20.sp, fontWeight = FontWeight.Black, modifier = Modifier.weight(1f))
-                        if (model.seen(items)) Text("${model.mastery(items)}%", color = p.muted, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                        Column(Modifier.weight(1f)) {
+                            Text(cat.name, color = p.ink, fontSize = 20.sp, fontWeight = FontWeight.Black)
+                            Text(
+                                "${topics.size} נושאים" + if (model.seen(items)) " · ${model.mastery(items)}% שליטה" else "",
+                                color = p.muted, fontSize = 13.sp, fontWeight = FontWeight.SemiBold,
+                            )
+                        }
+                        if (!searching && filter == null) Icon(Icons.forward, if (folded) "פתיחה" else "קיפול", tint = p.muted, modifier = Modifier.size(18.dp).graphicsLayer { rotationZ = -90f + turn })
                     }
                 }
-                items(topics, key = { it.id }) { t ->
+                if (!folded) items(topics, key = { it.id }) { t ->
                     val items = model.allItems.filter { it.topic.id == t.id }
                     val seen = model.seen(items)
                     val pct = model.mastery(items)
@@ -226,6 +242,56 @@ private fun QuickTiles(model: AppModel, nav: Nav) {
                 Text(t.title, color = p.ink, fontSize = 16.5.sp, fontWeight = FontWeight.ExtraBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
             Chevron(p.blue)
+        }
+    }
+    model.nextTopic()?.takeIf { it.id != model.lastTopicId }?.let { t ->
+        val items = model.allItems.filter { it.topic.id == t.id }
+        val started = model.seen(items)
+        Row(
+            Modifier.fillMaxWidth().bouncy { nav.go(Screen.Topic(t.id)) }
+                .deepGlass(RoundedCornerShape(26.dp), elevation = 12.dp).padding(horizontal = 16.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            IconTile(Icons.target, p.blue)
+            Column(Modifier.weight(1f)) {
+                Text(if (started) "כדאי לחזור על" else "הנושא הבא שלך", color = p.blue, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                Text(t.title, color = p.ink, fontSize = 16.5.sp, fontWeight = FontWeight.ExtraBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(if (started) "שליטה ${model.mastery(items)}%" else "עוד לא התחלת · ${items.size} שאלות", color = p.muted, fontSize = 12.5.sp)
+            }
+            Chevron(p.blue)
+        }
+    }
+}
+
+/** One chip per chapter, with "all" first; picking one shows only that chapter. */
+@Composable
+private fun CategoryChips(model: AppModel, modifier: Modifier) {
+    val p = Pal
+    val rowState = rememberLazyListState()
+    val selected = (model.categories.indexOfFirst { it.id == model.homeFilter } + 1).coerceAtLeast(0)
+    // Keep the chosen chip in view.
+    LaunchedEffect(selected) { rowState.animateScrollToItem(maxOf(0, selected - 1)) }
+    androidx.compose.foundation.lazy.LazyRow(
+        modifier.fillMaxWidth(),
+        state = rowState,
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 18.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        val all = listOf<Pair<String?, String>>(null to "הכל") + model.categories.map { it.id to it.name }
+        items(all.size) { i ->
+            val (id, name) = all[i]
+            val on = model.homeFilter == id
+            val shape = RoundedCornerShape(50)
+            Row(
+                Modifier.bouncy(pressedScale = .94f) { if (!on) tick(); model.setHomeFilter(id) }
+                    .glass(shape, tint = if (on) p.blueSoft else Color.Unspecified, elevation = if (on) 8.dp else 3.dp)
+                    .border(if (on) 1.5.dp else 0.dp, if (on) p.blue else Color.Transparent, shape)
+                    .padding(horizontal = 14.dp, vertical = 9.dp),
+                verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                if (id != null) Icon(Icons.forCategory(id), null, tint = if (on) p.blue else p.muted, modifier = Modifier.size(16.dp))
+                Text(name, color = if (on) p.blue else p.ink, fontSize = 14.sp, fontWeight = if (on) FontWeight.ExtraBold else FontWeight.SemiBold, maxLines = 1)
+            }
         }
     }
 }

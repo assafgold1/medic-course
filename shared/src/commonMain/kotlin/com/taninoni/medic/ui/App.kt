@@ -107,6 +107,8 @@ fun App() {
     LaunchedEffect(model.content) { AnimatedImages.byFile = model.content?.topics.orEmpty().flatMap { it.images }.associateBy { it.file } }
     var splash by remember { mutableStateOf(true) }
     LaunchedEffect(model.user == null) { if (model.user == null) nav.home() }
+    FeedbackPrefs.sound = model.soundOn
+    FeedbackPrefs.haptics = model.hapticsOn
     AppBack.handler = { if (ViewerState.isOpen) { ViewerState.close(); true } else nav.back() }
 
     MedicTheme(model.themeMode) {
@@ -117,7 +119,7 @@ fun App() {
             LocalSoundOn provides model.soundOn,
         ) {
             val haze = rememberHazeState()
-            CompositionLocalProvider(LocalHaze provides haze, LocalHazePerformanceMode provides HazePerformanceMode.Performance) {
+            CompositionLocalProvider(LocalHaze provides haze, LocalHazePerformanceMode provides HazePerformanceMode.Performance, LocalReduceEffects provides model.reduceEffects) {
             Box(Modifier.fillMaxSize().background(Pal.baseTop)) {
                 AmbientBackdrop(Modifier.hazeSource(haze, zIndex = 0f))
                 if (model.content == null) {

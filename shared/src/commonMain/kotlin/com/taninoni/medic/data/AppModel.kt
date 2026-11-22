@@ -37,6 +37,9 @@ class AppModel(private val scope: CoroutineScope) {
     var examSize by mutableStateOf(settings.getInt(K_EXAM, 30)); private set
     var instantFeedback by mutableStateOf(settings.getBoolean(K_INSTANT, true)); private set
     var soundOn by mutableStateOf(settings.getBoolean(K_SOUND, true)); private set
+    var hapticsOn by mutableStateOf(settings.getBoolean(K_HAPTICS, true)); private set
+    var reduceEffects by mutableStateOf(settings.getBoolean(K_REDUCE, false)); private set
+    fun updateReduceEffects(on: Boolean) { reduceEffects = on; settings.putBoolean(K_REDUCE, on) }
 
     /* learning extras: bookmarks, speed-blitz high score, daily study streak */
     var bookmarks by mutableStateOf(settings.getStringOrNull(K_BOOKMARKS)?.split(',')?.filter { it.isNotBlank() }?.toSet().orEmpty()); private set
@@ -350,6 +353,23 @@ class AppModel(private val scope: CoroutineScope) {
 
     /** The last topic the user opened, for "continue" on the home screen. */
     var lastTopicId by mutableStateOf(settings.getStringOrNull(K_LAST_TOPIC)); private set
+
+    /* home list: one chapter shown (null = all), and chapters folded away */
+    var homeFilter by mutableStateOf(settings.getStringOrNull(K_HOME_FILTER)); private set
+    var collapsedCats by mutableStateOf(settings.getStringOrNull(K_COLLAPSED)?.split(',')?.filter { it.isNotBlank() }?.toSet().orEmpty()); private set
+    fun setHomeFilter(cat: String?) { homeFilter = cat; if (cat == null) settings.remove(K_HOME_FILTER) else settings.putString(K_HOME_FILTER, cat) }
+    fun toggleCollapsed(cat: String) {
+        collapsedCats = if (cat in collapsedCats) collapsedCats - cat else collapsedCats + cat
+        settings.putString(K_COLLAPSED, collapsedCats.joinToString(","))
+    }
+
+    /** What to study next: the first topic not started yet, else the weakest one under 80%. */
+    fun nextTopic(): Topic? {
+        val byTopic = allItems.groupBy { it.topic.id }
+        topics.firstOrNull { t -> byTopic[t.id].orEmpty().let { it.isNotEmpty() && !seen(it) } }?.let { return it }
+        return topics.mapNotNull { t -> byTopic[t.id]?.takeIf { it.isNotEmpty() }?.let { t to mastery(it) } }
+            .filter { it.second < 80 }.minByOrNull { it.second }?.first
+    }
     fun openedTopic(id: String) { if (lastTopicId != id) { lastTopicId = id; settings.putString(K_LAST_TOPIC, id) } }
 
     fun setSelection(cats: Set<String>) { selectedCats = cats; settings.putString(K_SEL, cats.joinToString(",")) }
@@ -359,6 +379,7 @@ class AppModel(private val scope: CoroutineScope) {
     fun updateExamSize(n: Int) { examSize = n; settings.putInt(K_EXAM, n) }
     fun updateInstantFeedback(on: Boolean) { instantFeedback = on; settings.putBoolean(K_INSTANT, on) }
     fun updateSound(on: Boolean) { soundOn = on; settings.putBoolean(K_SOUND, on) }
+    fun updateHaptics(on: Boolean) { hapticsOn = on; settings.putBoolean(K_HAPTICS, on) }
 
     /** Wipes answers and attempts. The reset time syncs, so other devices drop their older data too. */
     fun resetProgress() {
@@ -477,9 +498,13 @@ class AppModel(private val scope: CoroutineScope) {
         const val K_EXAM = "exam_size"
         const val K_INSTANT = "instant_feedback"
         const val K_SOUND = "sound"
+        const val K_HAPTICS = "haptics"
+        const val K_REDUCE = "reduce_effects"
         const val K_BOOKMARKS = "bookmarks"
         const val K_BLITZ_BEST = "blitz_best"
         const val K_LAST_TOPIC = "last_topic"
+        const val K_HOME_FILTER = "home_filter"
+        const val K_COLLAPSED = "home_collapsed"
         const val K_LAST_DAY = "last_study_day"
         const val K_TODAY_COUNT = "today_count"
         const val K_STREAK_DAYS = "study_streak_days"

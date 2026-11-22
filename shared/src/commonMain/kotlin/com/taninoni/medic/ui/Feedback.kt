@@ -1,10 +1,20 @@
 package com.taninoni.medic.ui
 
 import androidx.compose.runtime.compositionLocalOf
+import com.taninoni.medic.Haptics
 import com.taninoni.medic.Sound
 import com.taninoni.medic.res.Res
 
 val LocalSoundOn = compositionLocalOf { true }
+
+/** The user's sound and vibration choices, set by the app from the settings. */
+object FeedbackPrefs {
+    var sound = true
+    var haptics = true
+}
+
+/** A light tap of feedback for selections: tabs, segmented controls, switches. */
+fun tick() { if (FeedbackPrefs.haptics) runCatching { Haptics.light() } }
 
 enum class Sfx(val file: String) {
     CORRECT("correct"),
@@ -31,7 +41,17 @@ object AnswerSound {
 
     fun play(ok: Boolean) = play(if (ok) Sfx.CORRECT else Sfx.WRONG)
 
+    /** Plays [sfx] if sound is on, with a matching vibration if vibration is on. */
     fun play(sfx: Sfx) {
-        cache[sfx]?.let { runCatching { Sound.clip(it) } }
+        if (FeedbackPrefs.sound) cache[sfx]?.let { runCatching { Sound.clip(it) } }
+        if (FeedbackPrefs.haptics) runCatching {
+            when (sfx) {
+                Sfx.CORRECT, Sfx.PASS -> Haptics.success()
+                Sfx.WRONG -> Haptics.error()
+                Sfx.FAIL -> Haptics.warning()
+                Sfx.STREAK -> { Haptics.success(); Haptics.heavy() }
+                Sfx.FLIP, Sfx.TAP, Sfx.TICK -> Haptics.light()
+            }
+        }
     }
 }

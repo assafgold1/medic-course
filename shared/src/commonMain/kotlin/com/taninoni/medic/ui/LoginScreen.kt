@@ -235,7 +235,7 @@ private fun Choice(title: String, sub: String, icon: ImageVector, selected: Bool
     val p = Pal
     val shape = RoundedCornerShape(24.dp)
     Row(
-        Modifier.fillMaxWidth().bouncy(onClick = onClick)
+        Modifier.fillMaxWidth().bouncy { tick(); onClick() }
             .glass(shape, tint = if (selected) p.blueSoft else Color.Unspecified, elevation = if (selected) 12.dp else 4.dp)
             .border(if (selected) 2.dp else 0.dp, if (selected) p.blue else Color.Transparent, shape)
             .padding(horizontal = 16.dp, vertical = 14.dp),

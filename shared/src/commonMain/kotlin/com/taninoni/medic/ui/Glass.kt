@@ -104,6 +104,21 @@ val TOP_BAR = 58.dp
 
 /* ---------------- backdrop ---------------- */
 
+/** "Reduce effects": no live blur, refraction or drifting light. For slower phones and to save battery. */
+val LocalReduceEffects = androidx.compose.runtime.compositionLocalOf { false }
+
+/** Plain translucent card used instead of real glass when effects are reduced. */
+@Composable
+private fun Modifier.plainGlass(shape: Shape, tint: Color, elevation: Dp, rim: Boolean): Modifier {
+    val p = Pal
+    val base = if (p.dark) Color(0xFF221D1C).copy(alpha = .92f) else Color.White.copy(alpha = .9f)
+    return this
+        .then(if (elevation > 0.dp) Modifier.softShadow(shape, elevation, p.glassShadow) else Modifier)
+        .clip(shape)
+        .background(tint.compositeOver(base))
+        .then(if (rim) Modifier.border(1.dp, if (p.dark) Color.White.copy(alpha = .1f) else Color.Black.copy(alpha = .06f), shape) else Modifier)
+}
+
 /** Scroll position of the page in front, in px, so the backdrop light can drift behind it (parallax). */
 object Parallax {
     var scroll by mutableFloatStateOf(0f)
@@ -115,7 +130,9 @@ fun AmbientBackdrop(modifier: Modifier = Modifier) {
     // Drift the light at a low tick rate: the blobs move a few pixels a second, so 12 updates a second look
     // continuous, and every update re-renders all the glass sampling the backdrop.
     var t by remember { mutableFloatStateOf(0f) }
-    LaunchedEffect(Unit) {
+    val still = LocalReduceEffects.current
+    LaunchedEffect(still) {
+        if (still) return@LaunchedEffect
         val start = withFrameMillis { it }
         while (true) {
             delay(83)
@@ -208,6 +225,7 @@ fun Modifier.liquidGlass(
     frost: Float = .5f,
     fill: Color? = null,
 ): Modifier {
+    if (LocalReduceEffects.current) return plainGlass(shape, if (fill != null) tint.compositeOver(fill) else tint, 0.dp, rim = true)
     val p = Pal
     val haze = LocalHaze.current
     val style = remember(shape, tint, p.dark, clear, frost, fill) {
@@ -223,7 +241,10 @@ fun Modifier.liquidGlass(
                 backgroundColor(Color.White.copy(alpha = .2f + .5f * frost))
             }
             // Tint sits over the refracted content (backgroundColor sits behind it), so a fill here keeps text legible.
-            if (fill != null) tint(tint.compositeOver(fill))
+            // In the dark, a neutral graphite veil stops the glass from turning the colour of the light behind it.
+            val veil = if (p.dark) Color(0xFF2B2524).copy(alpha = .38f + .3f * frost) else null
+            val base = fill ?: veil
+            if (base != null) tint(tint.compositeOver(base))
             pressed { scale(.96f); refractionMultiplier(1.6f); whitePointDelta(if (p.dark) .08f else .12f) }
         }
     }
@@ -236,6 +257,7 @@ fun Modifier.liquidGlass(
  */
 @Composable
 fun Modifier.frostedGlass(shape: RoundedCornerShape, tint: Color = Color.Transparent, radius: Dp = 26.dp): Modifier {
+    if (LocalReduceEffects.current) return plainGlass(shape, tint, 18.dp, rim = true)
     val p = Pal
     val haze = LocalHaze.current
     val fill = tint.compositeOver(if (p.dark) Color(0xFF1D1A19).copy(alpha = .72f) else Color.White.copy(alpha = .62f))
@@ -272,6 +294,7 @@ fun Modifier.deepGlass(
 
 @Composable
 private fun Modifier.frosted(shape: Shape, tint: Color, elevation: Dp, radius: Dp, rim: Boolean): Modifier {
+    if (LocalReduceEffects.current) return plainGlass(shape, tint, elevation, rim)
     val p = Pal
     val haze = LocalHaze.current
     val fill = tint.compositeOver(if (p.dark) Color(0xFF141014).copy(alpha = .46f) else Color.White.copy(alpha = .42f))

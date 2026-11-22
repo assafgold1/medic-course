@@ -26,6 +26,21 @@ actual object Sound {
             track.stop(); track.reloadStaticData(); track.play()
         }
     }
+
+    private var voiceTrack: android.media.AudioTrack? = null
+    actual fun voice(wav: ByteArray) {
+        stopVoice()
+        runCatching {
+            val pcm = wav.copyOfRange(44, wav.size)
+            val rate = (wav[24].toInt() and 0xff) or ((wav[25].toInt() and 0xff) shl 8) or ((wav[26].toInt() and 0xff) shl 16)
+            voiceTrack = android.media.AudioTrack.Builder()
+                .setAudioAttributes(android.media.AudioAttributes.Builder().setUsage(android.media.AudioAttributes.USAGE_ASSISTANCE_SONIFICATION).setContentType(android.media.AudioAttributes.CONTENT_TYPE_SPEECH).build())
+                .setAudioFormat(android.media.AudioFormat.Builder().setEncoding(android.media.AudioFormat.ENCODING_PCM_16BIT).setSampleRate(rate).setChannelMask(android.media.AudioFormat.CHANNEL_OUT_MONO).build())
+                .setTransferMode(android.media.AudioTrack.MODE_STATIC).setBufferSizeInBytes(pcm.size).build()
+                .also { it.write(pcm, 0, pcm.size); it.play() }
+        }
+    }
+    actual fun stopVoice() { voiceTrack?.let { runCatching { it.stop() }; it.release() }; voiceTrack = null }
 }
 
 /** Platform HTTP client. HTTPS only (res/xml/network_security.xml). */
@@ -117,4 +132,29 @@ class ReminderReceiver : android.content.BroadcastReceiver() {
             .build()
         nm.notify(intent.getIntExtra("id", 100), n)
     }
+}
+
+actual object Haptics {
+    private val vibrator: android.os.Vibrator?
+        get() {
+            val ctx = AndroidContext.app ?: return null
+            return if (android.os.Build.VERSION.SDK_INT >= 31)
+                ctx.getSystemService(android.os.VibratorManager::class.java)?.defaultVibrator
+            else @Suppress("DEPRECATION") ctx.getSystemService(android.os.Vibrator::class.java)
+        }
+    private fun predefined(effect: Int, fallbackMs: Long, amplitude: Int) {
+        val v = vibrator ?: return
+        runCatching {
+            if (android.os.Build.VERSION.SDK_INT >= 29) v.vibrate(android.os.VibrationEffect.createPredefined(effect))
+            else v.vibrate(android.os.VibrationEffect.createOneShot(fallbackMs, amplitude))
+        }
+    }
+    private fun pattern(timings: LongArray, amplitudes: IntArray) {
+        runCatching { vibrator?.vibrate(android.os.VibrationEffect.createWaveform(timings, amplitudes, -1)) }
+    }
+    actual fun light() = predefined(2 /* EFFECT_TICK */, 12, 60)
+    actual fun heavy() = predefined(5 /* EFFECT_HEAVY_CLICK */, 40, 255)
+    actual fun success() = pattern(longArrayOf(0, 18, 70, 28), intArrayOf(0, 120, 0, 200))
+    actual fun warning() = pattern(longArrayOf(0, 30, 90, 30), intArrayOf(0, 180, 0, 180))
+    actual fun error() = pattern(longArrayOf(0, 40, 60, 40, 60, 40), intArrayOf(0, 220, 0, 220, 0, 220))
 }

@@ -76,12 +76,12 @@ fun BlitzScreen(model: AppModel, nav: Nav, s: Screen.Blitz) {
         while (secondsLeft > 0 && !finished) {
             delay(1000)
             secondsLeft--
-            if (secondsLeft in 1..5 && model.soundOn) AnswerSound.play(Sfx.TICK)
+            if (secondsLeft in 1..5) AnswerSound.play(Sfx.TICK)
         }
         if (!finished) {
             finished = true
             isNewRecord = model.recordBlitzScore(score)
-            if (model.soundOn) AnswerSound.play(if (score >= 5 || isNewRecord) Sfx.PASS else Sfx.FAIL)
+            AnswerSound.play(if (score >= 5 || isNewRecord) Sfx.PASS else Sfx.FAIL)
         }
     }
 
@@ -92,7 +92,7 @@ fun BlitzScreen(model: AppModel, nav: Nav, s: Screen.Blitz) {
             if (index + 1 >= items.size) {
                 finished = true
                 isNewRecord = model.recordBlitzScore(score)
-                if (model.soundOn) AnswerSound.play(if (score >= 5 || isNewRecord) Sfx.PASS else Sfx.FAIL)
+                AnswerSound.play(if (score >= 5 || isNewRecord) Sfx.PASS else Sfx.FAIL)
             } else {
                 index++
             }
@@ -180,10 +180,8 @@ fun BlitzScreen(model: AppModel, nav: Nav, s: Screen.Blitz) {
                                 } else {
                                     streak = 0
                                 }
-                                if (model.soundOn) {
-                                    if (ok && streak in setOf(3, 5, 10, 15, 20)) AnswerSound.play(Sfx.STREAK)
-                                    else AnswerSound.play(ok)
-                                }
+                                if (ok && streak in setOf(3, 5, 10, 15, 20)) AnswerSound.play(Sfx.STREAK)
+                                else AnswerSound.play(ok)
                             }.padding(horizontal = 16.dp, vertical = 15.dp),
                         horizontalArrangement = Arrangement.spacedBy(14.dp),
                         verticalAlignment = Alignment.CenterVertically,
@@ -234,7 +232,7 @@ fun AnatomyQuizScreen(model: AppModel, nav: Nav) {
         }
         if (index >= deck.size) {
             LaunchedEffect(index) {
-                if (model.soundOn) AnswerSound.play(if (right * 100 / deck.size >= 70) Sfx.PASS else Sfx.FAIL)
+                AnswerSound.play(if (right * 100 / deck.size >= 70) Sfx.PASS else Sfx.FAIL)
             }
             Column(Modifier.fillMaxWidth()) {
                 Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -303,10 +301,8 @@ fun AnatomyQuizScreen(model: AppModel, nav: Nav) {
                                     pickedDot = i
                                     val ok = i == q.targetIndex
                                     if (ok) { right++; streak++ } else { streak = 0 }
-                                    if (model.soundOn) {
-                                        if (ok && streak in setOf(3, 5, 10)) AnswerSound.play(Sfx.STREAK)
+                                    if (ok && streak in setOf(3, 5, 10)) AnswerSound.play(Sfx.STREAK)
                                         else AnswerSound.play(ok)
-                                    }
                                 },
                             contentAlignment = Alignment.Center,
                         ) {

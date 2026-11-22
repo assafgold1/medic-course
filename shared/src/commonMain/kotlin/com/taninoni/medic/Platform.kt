@@ -18,6 +18,18 @@ expect object Sound {
     fun alarm()
     /** Plays a short 16-bit mono PCM WAV clip (answer feedback). */
     fun clip(wav: ByteArray)
+    /** Plays a recorded voice prompt (16-bit mono WAV), cutting off the previous one. Plays in silent mode too. */
+    fun voice(wav: ByteArray)
+    fun stopVoice()
+}
+
+/** Short vibrations for taps, right and wrong answers, and big moments. */
+expect object Haptics {
+    fun light()
+    fun success()
+    fun warning()
+    fun error()
+    fun heavy()
 }
 
 /** Spoken device prompts (Hebrew text-to-speech) for the defibrillator simulator. */

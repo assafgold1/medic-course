@@ -210,7 +210,7 @@ fun QuizScreen(model: AppModel, nav: Nav, s: Screen.Quiz) {
                             streak = 0
                         }
                         // In exam mode the answer stays hidden until the end, so no sound there.
-                        if (cfg.instant && model.soundOn) {
+                        if (cfg.instant) {
                             if (ok && streak in setOf(3, 5, 10, 15, 20, 30)) AnswerSound.play(Sfx.STREAK)
                             else AnswerSound.play(ok)
                         }
@@ -240,13 +240,13 @@ fun QuizScreen(model: AppModel, nav: Nav, s: Screen.Quiz) {
             if (cfg.instant && chosen == null && eliminated.isEmpty() && item.question.options.size >= 4) {
                 Chip("רמז 50/50", icon = Icons.half, fg = p.blue) {
                     eliminated = item.question.options.indices.filter { it != 0 }.shuffled().take(2).toSet()
-                    if (model.soundOn) AnswerSound.play(Sfx.TAP)
+                    AnswerSound.play(Sfx.TAP)
                 }
             }
             Spacer(Modifier.weight(1f))
             Chip(if (saved) "נשמר" else "שמור לחזרה", icon = Icons.bookmark, fg = if (saved) p.mid else p.muted, tint = if (saved) p.midSoft else Color.Unspecified) {
                 model.toggleBookmark(item.id)
-                if (model.soundOn) AnswerSound.play(Sfx.TAP)
+                AnswerSound.play(Sfx.TAP)
             }
         }
         if (cfg.instant && chosen != null && diagram) AnswerImage(qImg!!)
@@ -262,7 +262,7 @@ fun ResultsScreen(model: AppModel, nav: Nav, s: Screen.Results) {
     val pass = pct >= model.passMark
     LaunchedEffect(s) {
         AnswerSound.preload()
-        if (model.soundOn && log.isNotEmpty()) AnswerSound.play(if (pass) Sfx.PASS else Sfx.FAIL)
+        if (log.isNotEmpty()) AnswerSound.play(if (pass) Sfx.PASS else Sfx.FAIL)
     }
     val cats = model.categories.filter { c -> log.any { it.item.cat == c.id } }
     val byCat = cats.associate { c -> c.id to log.filter { it.item.cat == c.id }.let { l -> l.count { it.ok } to l.size } }

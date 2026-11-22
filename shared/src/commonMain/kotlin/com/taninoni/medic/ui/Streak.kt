@@ -309,7 +309,7 @@ fun StreakScreen(model: AppModel, nav: Nav) {
         SectionTitle("תזכורת יומית")
         Panel {
             Row(
-                Modifier.fillMaxWidth().bouncy(pressedScale = .98f) { model.setReminder(!model.reminderOn) },
+                Modifier.fillMaxWidth().bouncy(pressedScale = .98f) { tick(); model.setReminder(!model.reminderOn) },
                 verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 IconTile(Icons.bell, p.blue, size = 40.dp)

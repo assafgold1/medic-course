@@ -111,6 +111,8 @@ fun SettingsScreen(model: AppModel, nav: Nav) {
                 model.updateTextScale(TEXT_STEPS[it.toInt()])
             }
             Text("דוגמה: מה הקצב המומלץ לעיסויים במבוגר?", color = p.ink, fontSize = 16.sp, lineHeight = 23.sp, modifier = Modifier.padding(horizontal = 4.dp))
+            Divider()
+            ToggleRow(Icons.half, "הפחתת אפקטים", "בלי טשטוש ותנועה ברקע. לטלפונים איטיים ולחיסכון בסוללה", model.reduceEffects) { model.updateReduceEffects(it) }
         }
 
         Group("תרגול ומבחן") {
@@ -129,6 +131,8 @@ fun SettingsScreen(model: AppModel, nav: Nav) {
 
         Group("צלילים") {
             ToggleRow(Icons.sound, "צלילים", "צליל הצלחה או טעות אחרי כל תשובה, וצלילי הסימולטור", model.soundOn) { model.updateSound(it) }
+            Divider()
+            ToggleRow(Icons.pulse, "רטט", "רטט קצר בתשובה נכונה או שגויה, בלחיצות ובשוק בסימולטור", model.hapticsOn) { model.updateHaptics(it) }
         }
 
         Group("נתונים") {
@@ -191,7 +195,7 @@ private fun Label(icon: ImageVector, text: String) {
 @Composable
 private fun ToggleRow(icon: ImageVector, title: String, subtitle: String, checked: Boolean, onChange: (Boolean) -> Unit) {
     val p = Pal
-    Row(Modifier.fillMaxWidth().bouncy(pressedScale = .98f) { onChange(!checked) }, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+    Row(Modifier.fillMaxWidth().bouncy(pressedScale = .98f) { tick(); onChange(!checked) }, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         IconTile(icon, p.blue, size = 40.dp)
         Column(Modifier.weight(1f)) {
             Text(title, color = p.ink, fontSize = 16.sp, fontWeight = FontWeight.Bold)

@@ -186,7 +186,7 @@ fun Segmented(options: List<Pair<String, String>>, selected: String, onSelect: (
                 val on = key == selected
                 Box(
                     Modifier.weight(1f).height(44.dp).clip(RoundedCornerShape(50))
-                        .bouncy(label = label, pressedScale = .93f) { onSelect(key) }.padding(horizontal = 4.dp),
+                        .bouncy(label = label, pressedScale = .93f) { if (!on) tick(); onSelect(key) }.padding(horizontal = 4.dp),
                     contentAlignment = Alignment.Center,
                 ) {
                     Text(label, color = if (on) p.blue else p.muted, fontWeight = if (on) FontWeight.ExtraBold else FontWeight.SemiBold, fontSize = 14.5.sp, textAlign = TextAlign.Center, maxLines = 1, overflow = TextOverflow.Ellipsis)
