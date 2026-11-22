@@ -111,4 +111,37 @@ class ServerTest {
         assertEquals(1, detail.attempts.size)
         assertEquals(2, detail.categories.first { it.id == "anat" }.answered)
     }
+
+    @Test
+    fun addressAndOrganisation() = testApplication {
+        val dbFile = File.createTempFile("medic", ".db").apply { deleteOnExit() }
+        application { module(Db(dbFile.path), instructors = setOf("teacher@b.co")) }
+        val client = createClient { install(ContentNegotiation) { json() } }
+
+        // Sign-up stores how to address the user and where they're from; junk values are dropped.
+        val reg = client.post("/api/auth/register") {
+            contentType(ContentType.Application.Json); setBody(RegisterRequest("dana@b.co", "password1", "Dana", address = "f", org = "mda"))
+        }.body<AuthResponse>()
+        assertEquals("f", reg.user.address)
+        assertEquals("mda", reg.user.org)
+        val odd = client.post("/api/auth/register") {
+            contentType(ContentType.Application.Json); setBody(RegisterRequest("odd@b.co", "password1", "Odd", address = "x", org = "  כבאות והצלה  "))
+        }.body<AuthResponse>()
+        assertEquals("", odd.user.address)
+        assertEquals("כבאות והצלה", odd.user.org)
+
+        // Login and /me return them; a partial update keeps the fields it doesn't name.
+        val login = client.post("/api/auth/login") { contentType(ContentType.Application.Json); setBody(LoginRequest("dana@b.co", "password1")) }.body<AuthResponse>()
+        assertEquals("mda", login.user.org)
+        val updated = client.put("/api/me") { bearerAuth(login.token); contentType(ContentType.Application.Json); setBody(UpdateProfileRequest(org = "uh")) }.body<UserDto>()
+        assertEquals("uh", updated.org)
+        assertEquals("f", updated.address)
+        assertEquals("Dana", updated.name)
+        assertEquals("uh", client.get("/api/me") { bearerAuth(login.token) }.body<UserDto>().org)
+
+        // Instructors see the organisation in the student list.
+        val teacher = client.post("/api/auth/register") { contentType(ContentType.Application.Json); setBody(RegisterRequest("teacher@b.co", "password7", "Teacher")) }.body<AuthResponse>()
+        val list = client.get("/api/instructor/students") { bearerAuth(teacher.token) }.body<List<StudentSummary>>()
+        assertEquals("uh", list.first { it.email == "dana@b.co" }.org)
+    }
 }

@@ -23,6 +23,10 @@ class Db(path: String) {
                     pass_hash TEXT NOT NULL,
                     created_at INTEGER NOT NULL)"""
             )
+            // Added later: older databases get the columns on first start.
+            val cols = st.executeQuery("PRAGMA table_info(users)").use { r -> buildSet { while (r.next()) add(r.getString("name")) } }
+            if ("address" !in cols) st.execute("ALTER TABLE users ADD COLUMN address TEXT NOT NULL DEFAULT ''")
+            if ("org" !in cols) st.execute("ALTER TABLE users ADD COLUMN org TEXT NOT NULL DEFAULT ''")
             st.execute(
                 """CREATE TABLE IF NOT EXISTS sessions(
                     token TEXT PRIMARY KEY,
@@ -44,13 +48,14 @@ class Db(path: String) {
     fun userCount(): Long = conn.createStatement().use { it.executeQuery("SELECT COUNT(*) FROM users").use { r -> r.next(); r.getLong(1) } }
 
     @Synchronized
-    fun createUser(email: String, password: String, name: String): UserDto? {
+    fun createUser(email: String, password: String, name: String, address: String = "", org: String = ""): UserDto? {
         val exists = conn.prepareStatement("SELECT 1 FROM users WHERE email=?").use { ps ->
             ps.setString(1, email); ps.executeQuery().use { it.next() }
         }
         if (exists) return null
-        conn.prepareStatement("INSERT INTO users(email,name,pass_hash,created_at) VALUES(?,?,?,?)").use { ps ->
+        conn.prepareStatement("INSERT INTO users(email,name,pass_hash,created_at,address,org) VALUES(?,?,?,?,?,?)").use { ps ->
             ps.setString(1, email); ps.setString(2, name); ps.setString(3, hashPassword(password)); ps.setLong(4, System.currentTimeMillis())
+            ps.setString(5, address); ps.setString(6, org)
             ps.executeUpdate()
         }
         return findUser(email)
@@ -58,9 +63,9 @@ class Db(path: String) {
 
     @Synchronized
     fun checkLogin(email: String, password: String): UserDto? {
-        val row = conn.prepareStatement("SELECT id,email,name,pass_hash FROM users WHERE email=?").use { ps ->
+        val row = conn.prepareStatement("SELECT id,email,name,address,org,pass_hash FROM users WHERE email=?").use { ps ->
             ps.setString(1, email)
-            ps.executeQuery().use { r -> if (r.next()) Triple(UserDto(r.getLong(1), r.getString(2), r.getString(3)), r.getString(4), Unit) else null }
+            ps.executeQuery().use { r -> if (r.next()) Triple(user(r), r.getString(6), Unit) else null }
         } ?: return null
         return if (verifyPassword(password, row.second)) row.first else null
     }
@@ -82,16 +87,22 @@ class Db(path: String) {
 
     @Synchronized
     fun userForToken(token: String): UserDto? =
-        conn.prepareStatement("SELECT u.id,u.email,u.name FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.token=?").use { ps ->
+        conn.prepareStatement("SELECT u.id,u.email,u.name,u.address,u.org FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.token=?").use { ps ->
             ps.setString(1, token)
-            ps.executeQuery().use { r -> if (r.next()) UserDto(r.getLong(1), r.getString(2), r.getString(3)) else null }
+            ps.executeQuery().use { r -> if (r.next()) user(r) else null }
         }
 
+    /** Updates the profile fields that are not null. */
     @Synchronized
-    fun updateName(userId: Long, name: String): UserDto? {
-        conn.prepareStatement("UPDATE users SET name=? WHERE id=?").use { it.setString(1, name); it.setLong(2, userId); it.executeUpdate() }
+    fun updateProfile(userId: Long, name: String?, address: String?, org: String?): UserDto? {
+        listOf("name" to name, "address" to address, "org" to org).forEach { (col, v) ->
+            if (v != null) conn.prepareStatement("UPDATE users SET $col=? WHERE id=?").use { it.setString(1, v); it.setLong(2, userId); it.executeUpdate() }
+        }
         return findUserById(userId)
     }
+
+    /** Columns 1..5 of a row must be id, email, name, address, org. */
+    private fun user(r: java.sql.ResultSet) = UserDto(r.getLong(1), r.getString(2), r.getString(3), address = r.getString(4), org = r.getString(5))
 
     @Synchronized
     fun checkPassword(userId: Long, password: String): Boolean =
@@ -133,20 +144,20 @@ class Db(path: String) {
     }
 
     private fun findUserById(id: Long): UserDto? =
-        conn.prepareStatement("SELECT id,email,name FROM users WHERE id=?").use { ps ->
+        conn.prepareStatement("SELECT id,email,name,address,org FROM users WHERE id=?").use { ps ->
             ps.setLong(1, id)
-            ps.executeQuery().use { r -> if (r.next()) UserDto(r.getLong(1), r.getString(2), r.getString(3)) else null }
+            ps.executeQuery().use { r -> if (r.next()) user(r) else null }
         }
 
     /** Every account with its creation time and stored progress (for the instructors' view). */
     @Synchronized
     fun allUsers(): List<Triple<UserDto, Long, Progress>> =
         conn.createStatement().use { st ->
-            st.executeQuery("SELECT u.id,u.email,u.name,u.created_at,p.data FROM users u LEFT JOIN progress p ON p.user_id=u.id ORDER BY u.name, u.email").use { r ->
+            st.executeQuery("SELECT u.id,u.email,u.name,u.address,u.org,u.created_at,p.data FROM users u LEFT JOIN progress p ON p.user_id=u.id ORDER BY u.name, u.email").use { r ->
                 buildList {
                     while (r.next()) add(Triple(
-                        UserDto(r.getLong(1), r.getString(2), r.getString(3)), r.getLong(4),
-                        r.getString(5)?.let { json.decodeFromString<Progress>(it) } ?: Progress(),
+                        user(r), r.getLong(6),
+                        r.getString(7)?.let { json.decodeFromString<Progress>(it) } ?: Progress(),
                     ))
                 }
             }
@@ -156,9 +167,9 @@ class Db(path: String) {
     fun userExists(email: String): Boolean = findUser(email) != null
 
     private fun findUser(email: String): UserDto? =
-        conn.prepareStatement("SELECT id,email,name FROM users WHERE email=?").use { ps ->
+        conn.prepareStatement("SELECT id,email,name,address,org FROM users WHERE email=?").use { ps ->
             ps.setString(1, email)
-            ps.executeQuery().use { r -> if (r.next()) UserDto(r.getLong(1), r.getString(2), r.getString(3)) else null }
+            ps.executeQuery().use { r -> if (r.next()) user(r) else null }
         }
 
     private fun hashPassword(password: String): String {

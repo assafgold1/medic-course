@@ -54,9 +54,9 @@ class Api(private val baseUrl: () -> String) {
             contentType(ContentType.Application.Json); setBody(LoginRequest(email, password))
         }.ok()
 
-    suspend fun register(email: String, password: String, name: String): AuthResponse =
+    suspend fun register(email: String, password: String, name: String, address: String, org: String): AuthResponse =
         client.post(url("/api/auth/register")) {
-            contentType(ContentType.Application.Json); setBody(RegisterRequest(email, password, name))
+            contentType(ContentType.Application.Json); setBody(RegisterRequest(email, password, name, address, org))
         }.ok()
 
     suspend fun students(token: String): List<StudentSummary> =
@@ -69,9 +69,11 @@ class Api(private val baseUrl: () -> String) {
         runCatching { client.post(url("/api/auth/logout")) { bearerAuth(token) } }
     }
 
-    suspend fun updateProfile(token: String, name: String): UserDto =
+    suspend fun me(token: String): UserDto = client.get(url("/api/me")) { bearerAuth(token) }.ok()
+
+    suspend fun updateProfile(token: String, name: String? = null, address: String? = null, org: String? = null): UserDto =
         client.put(url("/api/me")) {
-            bearerAuth(token); contentType(ContentType.Application.Json); setBody(UpdateProfileRequest(name))
+            bearerAuth(token); contentType(ContentType.Application.Json); setBody(UpdateProfileRequest(name, address, org))
         }.ok()
 
     suspend fun changePassword(token: String, current: String, new: String) =

@@ -3,7 +3,13 @@ package medic
 import kotlinx.serialization.Serializable
 
 @Serializable
-data class RegisterRequest(val email: String, val password: String, val name: String = "")
+data class RegisterRequest(
+    val email: String, val password: String, val name: String = "",
+    /** How the app addresses the user in Hebrew: "m", "f", or "" if not chosen. */
+    val address: String = "",
+    /** Where the user volunteers or works: "mda", "uh", or free text for anything else. */
+    val org: String = "",
+)
 
 @Serializable
 data class LoginRequest(val email: String, val password: String, val name: String = "")
@@ -14,6 +20,8 @@ data class LoginRequest(val email: String, val password: String, val name: Strin
 data class UserDto(
     val id: Long, val email: String, val name: String,
     @kotlinx.serialization.EncodeDefault val instructor: Boolean = false,
+    @kotlinx.serialization.EncodeDefault val address: String = "",
+    @kotlinx.serialization.EncodeDefault val org: String = "",
 )
 
 /** One row in the instructors' list. [mastery] = share of all course questions last answered correctly. */
@@ -23,6 +31,7 @@ data class StudentSummary(
     val answered: Int, val correct: Int, val mastery: Int,
     val attempts: Int, val examsPassed: Int, val lastExamPct: Int? = null,
     val lastActive: Long = 0, val joined: Long = 0,
+    val org: String = "",
 )
 
 @Serializable
@@ -32,7 +41,8 @@ data class CategoryProgress(val id: String, val name: String, val correct: Int, 
 data class StudentDetail(val student: StudentSummary, val categories: List<CategoryProgress>, val attempts: List<Attempt>)
 
 @Serializable
-data class UpdateProfileRequest(val name: String)
+/** Fields left null keep their current value (older apps send only the name). */
+data class UpdateProfileRequest(val name: String? = null, val address: String? = null, val org: String? = null)
 
 @Serializable
 data class ChangePasswordRequest(val current: String, val new: String)

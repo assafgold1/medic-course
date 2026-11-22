@@ -231,7 +231,7 @@ fun StreakCard(model: AppModel, modifier: Modifier = Modifier, onClick: () -> Un
                     when {
                         done -> "שמרת על הרצף היום. נתראה מחר!"
                         risk -> "עוד ${model.leftToday} שאלות ושמרת על הרצף"
-                        else -> "ענה על ${model.dailyGoal} שאלות כדי להדליק את הרצף"
+                        else -> model.g("ענה", "עני") + " על ${model.dailyGoal} שאלות כדי להדליק את הרצף"
                     },
                     color = when { done -> p.blue; risk -> p.bad; else -> p.muted },
                     fontSize = 13.5.sp, fontWeight = FontWeight.Bold, lineHeight = 18.sp,
@@ -275,9 +275,9 @@ fun StreakScreen(model: AppModel, nav: Nav) {
             Text(if (streak == 1) "יום ברצף" else "ימים ברצף", color = p.ink, fontSize = 19.sp, fontWeight = FontWeight.ExtraBold)
             Text(
                 when {
-                    model.doneToday -> "היעד של היום הושלם. חזור מחר כדי להמשיך."
+                    model.doneToday -> "היעד של היום הושלם. " + model.g("חזור", "חזרי") + " מחר כדי להמשיך."
                     model.streakAtRisk -> "הרצף בסכנה! עוד ${model.leftToday} שאלות עד חצות."
-                    else -> "ענה היום על ${model.dailyGoal} שאלות ותדליק רצף חדש."
+                    else -> model.g("ענה היום על ${model.dailyGoal} שאלות ותדליק רצף חדש.", "עני היום על ${model.dailyGoal} שאלות ותדליקי רצף חדש.")
                 },
                 color = p.muted, fontSize = 14.5.sp, textAlign = TextAlign.Center, lineHeight = 20.sp,
             )
@@ -516,11 +516,11 @@ private fun CelebrationView(model: AppModel, c: Celebration) {
         c.streak == 3 -> "שלושה ימים ברצף. ההרגל מתחיל להיבנות!"
         c.streak == 7 -> "שבוע שלם של תרגול. זה כבר הרגל!"
         c.streak == 14 -> "שבועיים ברצף. החומר נשאר טרי!"
-        c.streak == 30 -> "חודש שלם! אתה בדרך להיות חובש מעולה."
+        c.streak == 30 -> model.g("חודש שלם! אתה בדרך להיות חובש מעולה.", "חודש שלם! את בדרך להיות חובשת מעולה.")
         c.streak == 50 -> "50 ימים. זו כבר התמדה של אלופים."
         c.streak == 100 -> "100 ימים ברצף. אגדה!"
-        c.record -> "שיא אישי חדש! תמשיך ככה."
-        else -> "חזור מחר כדי שהרצף ימשיך לבעור."
+        c.record -> model.g("שיא אישי חדש! תמשיך ככה.", "שיא אישי חדש! תמשיכי ככה.")
+        else -> model.g("חזור", "חזרי") + " מחר כדי שהרצף ימשיך לבעור."
     }
     Box(
         Modifier.fillMaxSize()

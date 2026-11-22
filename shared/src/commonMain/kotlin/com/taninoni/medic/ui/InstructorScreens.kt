@@ -96,7 +96,10 @@ fun InstructorScreen(model: AppModel, nav: Nav) {
                             }
                             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                                 Text(s.name.ifBlank { s.email }, color = p.ink, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                Text("${s.answered} שאלות · ${s.attempts} תרגולים · ${ago(s.lastActive)}", color = p.muted, fontSize = 13.sp)
+                                Text(
+                                    (if (s.org.isNotEmpty()) com.taninoni.medic.data.orgLabel(s.org) + " · " else "") + "${s.answered} שאלות · ${s.attempts} תרגולים · ${ago(s.lastActive)}",
+                                    color = p.muted, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                                )
                                 ProgressBar(s.mastery / 100f, p.tone(s.mastery))
                             }
                             Pill("${s.mastery}%", p.tone(s.mastery), p.toneSoft(s.mastery))
@@ -123,7 +126,7 @@ fun StudentScreen(model: AppModel, nav: Nav, id: Long) {
                 d == null -> Text("טוען…", color = p.muted)
                 else -> {
                     val s = d.student
-                    Text(s.email, color = p.muted, fontSize = 14.sp)
+                    Text(s.email + if (s.org.isNotEmpty()) " · " + com.taninoni.medic.data.orgLabel(s.org) else "", color = p.muted, fontSize = 14.sp)
                     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         Stat2("${s.mastery}%", "שליטה בחומר", Modifier.weight(1f))
                         Stat2("${s.answered}", "שאלות שנענו", Modifier.weight(1f))

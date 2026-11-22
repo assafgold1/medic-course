@@ -168,11 +168,13 @@ fun ProgressBar(fraction: Float, color: Color, modifier: Modifier = Modifier, tr
 @Composable
 fun Segmented(options: List<Pair<String, String>>, selected: String, onSelect: (String) -> Unit) {
     val p = Pal
-    val index = options.indexOfFirst { it.first == selected }.coerceAtLeast(0)
+    val found = options.indexOfFirst { it.first == selected }
+    val index = found.coerceAtLeast(0)
     BoxWithConstraints(Modifier.fillMaxWidth().glass(RoundedCornerShape(50), elevation = 0.dp).padding(4.dp)) {
         val w = maxWidth / options.size
         val x by animateDpAsState(w * index, spring(dampingRatio = .72f, stiffness = 420f))
-        Box(
+        // No thumb until something is chosen, so an unset value doesn't look like the first option.
+        if (found >= 0) Box(
             Modifier.offset(x = x).width(w).heightIn(min = 44.dp).height(44.dp)
                 .softShadow(RoundedCornerShape(50), 8.dp, p.glassShadow)
                 .clip(RoundedCornerShape(50))

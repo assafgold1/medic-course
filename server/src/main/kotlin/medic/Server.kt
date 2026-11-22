@@ -67,7 +67,7 @@ fun Application.module(db: Db, instructors: Set<String> = System.getenv("MEDIC_I
         return StudentSummary(
             u.id, u.name, u.email, answered, correct, if (questionCat.isEmpty()) 0 else correct * 100 / questionCat.size,
             p.attempts.size, exams.count { it.pct >= course.passMark }, exams.maxByOrNull { it.at }?.pct,
-            maxOf(p.updatedAt, p.attempts.maxOfOrNull { it.at } ?: 0), joined,
+            maxOf(p.updatedAt, p.attempts.maxOfOrNull { it.at } ?: 0), joined, org = u.org,
         )
     }
     val version = Json.parseToJsonElement(content).let { (it as kotlinx.serialization.json.JsonObject)["version"].toString().trim('"') }
@@ -108,7 +108,7 @@ fun Application.module(db: Db, instructors: Set<String> = System.getenv("MEDIC_I
                 if (req.password.length < 8) return@post call.respond(HttpStatusCode.BadRequest, ErrorDto("הסיסמה צריכה להיות לפחות 8 תווים"))
                 val ip = call.request.header("X-Real-IP") ?: call.request.header(HttpHeaders.XForwardedFor)?.substringBefore(',')?.trim() ?: call.request.origin.remoteHost
                 if (!allowSignup(ip)) return@post call.respond(HttpStatusCode.TooManyRequests, ErrorDto("יותר מדי חשבונות חדשים, נסה שוב מאוחר יותר"))
-                val user = db.createUser(email, req.password, req.name.trim().take(60))
+                val user = db.createUser(email, req.password, req.name.trim().take(60), cleanAddress(req.address), cleanOrg(req.org))
                     ?: return@post call.respond(HttpStatusCode.Conflict, ErrorDto("כבר קיים משתמש עם המייל הזה. עבור ללשונית כניסה"))
                 val token = db.newSession(user.id)
                 call.setTokenCookie(token)
@@ -137,7 +137,9 @@ fun Application.module(db: Db, instructors: Set<String> = System.getenv("MEDIC_I
             put("/me") {
                 val user = call.user(db) ?: return@put
                 val req = call.receive<UpdateProfileRequest>()
-                call.respond((db.updateName(user.id, req.name.trim().take(60)) ?: user).withRole())
+                val name = req.name?.trim()?.take(60)
+                if (name != null && name.length < 2) return@put call.respond(HttpStatusCode.BadRequest, ErrorDto("יש למלא שם מלא, כדי שהמדריכים יזהו אותך"))
+                call.respond((db.updateProfile(user.id, name, req.address?.let(::cleanAddress), req.org?.let(::cleanOrg)) ?: user).withRole())
             }
             // Instructors: every student's progress.
             get("/instructor/students") {
@@ -219,3 +221,9 @@ private data class CourseCat(val id: String, val name: String)
 private data class CourseTopic(val cat: String, val questions: List<CourseQ> = emptyList())
 @kotlinx.serialization.Serializable
 private data class CourseQ(val id: String)
+
+/** Only "m" or "f"; anything else means not chosen. */
+private fun cleanAddress(v: String) = v.trim().takeIf { it == "m" || it == "f" }.orEmpty()
+
+/** "mda", "uh", or a short free-text organisation name. */
+private fun cleanOrg(v: String) = v.trim().take(40)

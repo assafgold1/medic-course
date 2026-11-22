@@ -241,6 +241,31 @@ private fun UserSettings(model: AppModel) {
         }
     }
 
+    val u = model.user
+    if (!guest) SectionRow("איך לפנות אליך", when (u?.address) { "m" -> "בלשון זכר"; "f" -> "בלשון נקבה"; else -> "לא נבחר" }, open == "address") { toggle("address") }
+    if (!guest && open == "address") {
+        Segmented(listOf("m" to "בלשון זכר", "f" to "בלשון נקבה"), u?.address.orEmpty()) { v ->
+            run("נשמר") { model.updateProfile(address = v) }
+        }
+    }
+
+    if (!guest) SectionRow("ארגון", u?.org?.takeIf { it.isNotEmpty() }?.let { com.taninoni.medic.data.orgLabel(it) } ?: "לא נבחר", open == "org") { toggle("org") }
+    if (!guest && open == "org") {
+        val current = u?.org.orEmpty()
+        var pick by remember(current) { mutableStateOf(if (current == "mda" || current == "uh" || current.isEmpty()) current else "other") }
+        val otherState = rememberTextFieldState(if (pick == "other") current else "")
+        Segmented(listOf("mda" to "מד״א", "uh" to "איחוד הצלה", "other" to "אחר"), pick) { v ->
+            pick = v
+            if (v != "other") run("נשמר") { model.updateProfile(org = v) }
+        }
+        if (pick == "other") {
+            Field("שם הארגון", otherState, KeyboardType.Text)
+            PrimaryButton(if (busy) "רגע…" else "שמור ארגון", Modifier.fillMaxWidth(), enabled = !busy && otherState.text.isNotBlank()) {
+                run("נשמר") { model.updateProfile(org = otherState.text.toString()) }
+            }
+        }
+    }
+
     if (!guest) SectionRow("שינוי סיסמה", "שאר המכשירים יתנתקו מהחשבון", open == "password") { toggle("password") }
     if (!guest && open == "password") {
         Field("סיסמה נוכחית", currentState, KeyboardType.Password, secret = true)

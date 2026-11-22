@@ -107,7 +107,16 @@ data class Progress(
 )
 
 @Serializable
-data class UserDto(val id: Long, val email: String, val name: String, val instructor: Boolean = false)
+data class UserDto(
+    val id: Long, val email: String, val name: String, val instructor: Boolean = false,
+    /** How to address the user in Hebrew: "m", "f", or "" if not chosen yet. */
+    val address: String = "",
+    /** "mda", "uh", free text for another organisation, or "" if not chosen yet. */
+    val org: String = "",
+)
+
+/** Display name of an organisation code. */
+fun orgLabel(org: String) = when (org) { "mda" -> "מד״א"; "uh" -> "איחוד הצלה"; else -> org }
 
 @Serializable
 data class StudentSummary(
@@ -115,6 +124,7 @@ data class StudentSummary(
     val answered: Int, val correct: Int, val mastery: Int,
     val attempts: Int, val examsPassed: Int, val lastExamPct: Int? = null,
     val lastActive: Long = 0, val joined: Long = 0,
+    val org: String = "",
 )
 
 @Serializable
@@ -124,7 +134,7 @@ data class CategoryProgress(val id: String, val name: String, val correct: Int, 
 data class StudentDetail(val student: StudentSummary, val categories: List<CategoryProgress>, val attempts: List<Attempt>)
 
 @Serializable
-data class UpdateProfileRequest(val name: String)
+data class UpdateProfileRequest(val name: String? = null, val address: String? = null, val org: String? = null)
 
 @Serializable
 data class ChangePasswordRequest(val current: String, val new: String)
@@ -136,7 +146,7 @@ data class DeleteAccountRequest(val password: String)
 data class AuthResponse(val token: String, val user: UserDto, val created: Boolean = false)
 
 @Serializable
-data class RegisterRequest(val email: String, val password: String, val name: String = "")
+data class RegisterRequest(val email: String, val password: String, val name: String = "", val address: String = "", val org: String = "")
 
 @Serializable
 data class LoginRequest(val email: String, val password: String, val name: String = "")

@@ -77,7 +77,7 @@ class AppModel(private val scope: CoroutineScope) {
                 ?.takeIf { settings.getStringOrNull(K_BUNDLED) == bundled.version } ?: bundled
                 .also { settings.putString(K_BUNDLED, it.version); settings.remove(K_CONTENT) }
         }
-        scope.launch { refreshContent(); sync() }
+        scope.launch { refreshContent(); refreshUser(); sync() }
         migrateStreak()
         refreshDay()
         scheduleReminders()
@@ -158,6 +158,15 @@ class AppModel(private val scope: CoroutineScope) {
         val earned = streak % 7 == 0 && freezes < MAX_FREEZES
         if (earned) { freezes++; settings.putInt(K_FREEZES, freezes) }
         celebration = Celebration(streak, earned, record && streak > 1)
+        scheduleReminders()
+    }
+
+    /** The streak lives on the device; a different account starts its own. */
+    private fun resetStreak() {
+        metDays = emptySet(); frozenDays = emptySet(); freezes = 0; longestStreak = 0; todayCount = 0
+        saveDays(K_MET, metDays); saveDays(K_FROZEN, frozenDays)
+        settings.putInt(K_FREEZES, 0); settings.putInt(K_LONGEST, 0); settings.putInt(K_TODAY_COUNT, 0)
+        celebration = null; streakNotice = null
         scheduleReminders()
     }
 
@@ -368,8 +377,8 @@ class AppModel(private val scope: CoroutineScope) {
         signIn(r)
     }
 
-    suspend fun register(name: String, email: String, password: String) {
-        val r = api.register(email.trim(), password, name.trim())
+    suspend fun register(name: String, email: String, password: String, address: String, org: String) {
+        val r = api.register(email.trim(), password, name.trim(), address, org.trim())
         justCreated = true
         signIn(r)
     }
@@ -379,7 +388,10 @@ class AppModel(private val scope: CoroutineScope) {
 
     private suspend fun signIn(r: AuthResponse) {
         // Progress on this device belongs to whoever used it before; never mix it into another account.
-        if (settings.getLongOrNull(K_OWNER) != r.user.id) { progress = Progress(); saveProgress(); settings.putLong(K_OWNER, r.user.id) }
+        if (settings.getLongOrNull(K_OWNER) != r.user.id) {
+            progress = Progress(); saveProgress(); settings.putLong(K_OWNER, r.user.id)
+            resetStreak()
+        }
         token = r.token; user = r.user
         settings.putString(K_TOKEN, r.token)
         settings.putString(K_USER, api.json.encodeToString(r.user))
@@ -388,11 +400,26 @@ class AppModel(private val scope: CoroutineScope) {
 
     private fun requireToken() = token ?: throw ApiException("צריך להתחבר")
 
-    suspend fun updateName(name: String) {
-        val u = api.updateProfile(requireToken(), name.trim())
+    suspend fun updateName(name: String) = updateProfile(name = name.trim())
+
+    /** Saves the profile fields that are not null. */
+    suspend fun updateProfile(name: String? = null, address: String? = null, org: String? = null) {
+        val u = api.updateProfile(requireToken(), name, address, org?.trim())
         user = u
         settings.putString(K_USER, api.json.encodeToString(u))
     }
+
+    /** Reloads the account from the server, so profile or role changes made elsewhere show up. */
+    private suspend fun refreshUser() {
+        val t = token ?: return
+        runCatching { api.me(t) }.onSuccess { u -> user = u; settings.putString(K_USER, api.json.encodeToString(u)) }
+    }
+
+    /** Picks the masculine or feminine form of a phrase, by how the user asked to be addressed. */
+    fun g(m: String, f: String) = if (user?.address == "f") f else m
+
+    /** Older accounts were created before sign-up asked how to address the user and where they're from. */
+    val profileIncomplete get() = user?.let { it.address.isEmpty() || it.org.isEmpty() } ?: false
 
     /** Other devices are signed out by the server; this one stays signed in. */
     suspend fun changePassword(current: String, new: String) = api.changePassword(requireToken(), current, new)

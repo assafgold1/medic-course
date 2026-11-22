@@ -103,6 +103,14 @@ fun HomeScreen(model: AppModel, nav: Nav) {
                 }
             }
         }
+        if (!searching && model.profileIncomplete) item {
+            GlassRow(
+                model.g("ספר לנו עוד עליך", "ספרי לנו עוד עלייך"),
+                Modifier.pageItem().padding(bottom = 14.dp),
+                subtitle = "איך לפנות אליך ובאיזה ארגון, כדי שהמדריכים יכירו",
+                icon = Icons.special,
+            ) { nav.go(Screen.Account) }
+        }
         if (!searching) item {
             StreakCard(model, Modifier.pageItem().padding(bottom = 16.dp).rise(0, entered)) { nav.go(Screen.Streak) }
         }
