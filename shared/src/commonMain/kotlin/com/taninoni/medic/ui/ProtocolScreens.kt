@@ -44,32 +44,27 @@ private val NoC = Color(0xFF7C3AED)
 fun ProtocolsScreen(model: AppModel, nav: Nav) {
     val p = Pal
     val list = model.content?.protocols.orEmpty()
-    Column(Modifier.fillMaxSize()) {
-        AppBar("פרוטוקולים", { nav.back() })
-        Column(Modifier.weight(1f).sheetBackdrop().verticalScroll(rememberScrollState()).padding(top = 16.dp)) {
-            Sheet {
-                Text("מה עושים, בסדר הנכון. כל פרוטוקול בנוי מהחומר של הקורס.", color = p.muted, fontSize = 15.sp, lineHeight = 22.sp)
-                list.groupBy { it.group }.forEach { (group, items) ->
-                    SectionTitle(group, Modifier.padding(top = 6.dp))
-                    Panel(spacing = 0.dp) {
-                        items.forEachIndexed { i, pr ->
-                            if (i > 0) Box(Modifier.fillMaxWidth().height(1.dp).background(p.hair))
-                            Row(
-                                Modifier.fillMaxWidth().clickable { nav.go(Screen.ProtocolView(pr.id)) }.padding(vertical = 14.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                            ) {
-                                Box(Modifier.size(34.dp).clip(CircleShape).background(p.blueSoft), contentAlignment = Alignment.Center) {
-                                    Text("${pr.steps.count { it.k == "step" }}", color = p.blue, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                                }
-                                Text(pr.title, color = p.ink, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
-                                Text("‹", color = p.muted, fontSize = 22.sp)
+    GlassPage("פרוטוקולים", { nav.back() }) {
+            Text("מה עושים, בסדר הנכון. כל פרוטוקול בנוי מהחומר של הקורס.", color = p.muted, fontSize = 15.sp, lineHeight = 22.sp)
+            list.groupBy { it.group }.forEach { (group, items) ->
+                SectionTitle(group, Modifier.padding(top = 6.dp))
+                Panel(spacing = 0.dp) {
+                    items.forEachIndexed { i, pr ->
+                        if (i > 0) Box(Modifier.fillMaxWidth().height(1.dp).background(p.hair))
+                        Row(
+                            Modifier.fillMaxWidth().clickable { nav.go(Screen.ProtocolView(pr.id)) }.padding(vertical = 14.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        ) {
+                            Box(Modifier.size(34.dp).clip(CircleShape).background(p.blueSoft), contentAlignment = Alignment.Center) {
+                                Text("${pr.steps.count { it.k == "step" }}", color = p.blue, fontWeight = FontWeight.Bold, fontSize = 14.sp)
                             }
+                            Text(pr.title, color = p.ink, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                            Text("‹", color = p.muted, fontSize = 22.sp)
                         }
                     }
                 }
             }
-        }
     }
 }
 
@@ -78,21 +73,16 @@ fun ProtocolsScreen(model: AppModel, nav: Nav) {
 fun ProtocolScreen(model: AppModel, nav: Nav, id: String) {
     val p = Pal
     val pr = model.content?.protocols?.firstOrNull { it.id == id } ?: return
-    Column(Modifier.fillMaxSize()) {
-        AppBar(pr.title, { nav.back() })
-        Column(Modifier.weight(1f).sheetBackdrop().verticalScroll(rememberScrollState()).padding(top = 16.dp)) {
-            Sheet {
-                ProtocolFlow(pr)
-                Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    model.topic(pr.topic)?.let { t ->
-                        Chip("לנושא: ${t.title}", Modifier.weight(1f)) { nav.go(Screen.Topic(t.id)) }
-                    }
-                    model.topic(pr.topic)?.images?.firstOrNull { it.file == pr.file }?.let { img ->
-                        Chip("תרשים", Modifier) { ViewerState.show(listOf(img), 0) }
-                    }
+    GlassPage(pr.title, { nav.back() }) {
+            ProtocolFlow(pr)
+            Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                model.topic(pr.topic)?.let { t ->
+                    Chip("לנושא: ${t.title}", Modifier.weight(1f)) { nav.go(Screen.Topic(t.id)) }
+                }
+                model.topic(pr.topic)?.images?.firstOrNull { it.file == pr.file }?.let { img ->
+                    Chip("תרשים", Modifier) { ViewerState.show(listOf(img), 0) }
                 }
             }
-        }
     }
 }
 

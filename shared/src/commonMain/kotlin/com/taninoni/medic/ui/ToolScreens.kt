@@ -18,10 +18,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.text.input.clearText
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.TextButton
 import androidx.compose.ui.graphics.graphicsLayer
 import com.taninoni.medic.data.ApiException
 import androidx.compose.material3.Text
@@ -36,6 +33,9 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
+import androidx.compose.foundation.border
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -47,7 +47,6 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.foundation.text.input.TextFieldLineLimits
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.text.input.rememberTextFieldState
-import androidx.compose.material3.OutlinedSecureTextField
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -103,68 +102,62 @@ fun MetronomeScreen(model: AppModel, nav: Nav) {
     }
     fun fmt(ms: Long) = (ms / 1000).let { "${it / 60}:${(it % 60).toString().padStart(2, '0')}" }
 
-    Column(Modifier.fillMaxSize()) {
-        AppBar("מטרונום החייאה") { nav.back() }
-        Column(Modifier.weight(1f).sheetBackdrop().verticalScroll(rememberScrollState()).padding(top = 16.dp)) {
-            Sheet {
-                Text("ספירה קולית וחזותית לתרגול על בובה. כל 2 דקות מתקבלת התראה לניתוח קצב ולהחלפת מעסה.", color = p.muted)
-                Box(Modifier.fillMaxWidth().padding(vertical = 8.dp), contentAlignment = Alignment.Center) {
-                    val frac = when { breath > 0 -> breath / 2f; target > 0 -> count / target.toFloat(); else -> (count % 20) / 20f }
-                    val col = if (breath > 0) p.good else p.blue
-                    Canvas(Modifier.size(270.dp)) {
-                        val st = 8.dp.toPx()
-                        drawArc(p.hair, 0f, 360f, false, Offset(st / 2, st / 2), Size(size.width - st, size.height - st), style = Stroke(st))
-                        drawArc(col, -90f, 360f * frac, false, Offset(st / 2, st / 2), Size(size.width - st, size.height - st), style = Stroke(st, cap = StrokeCap.Round))
-                    }
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(if (breath > 0) "$breath" else "$count", color = if (breath > 0) p.good else p.ink, fontSize = 72.sp, fontWeight = FontWeight.SemiBold)
-                        Text(
-                            when { breath > 0 -> "הנשמה"; running && target > 0 -> "עיסויים מתוך $target"; running -> "עיסויים רציפים"; count > 0 -> "בהשהיה"; else -> "מוכן" },
-                            color = p.muted, fontWeight = FontWeight.SemiBold,
-                        )
-                    }
+    GlassPage("מטרונום החייאה", { nav.back() }) {
+            Text("ספירה קולית וחזותית לתרגול על בובה. כל 2 דקות מתקבלת התראה לניתוח קצב ולהחלפת מעסה.", color = p.muted)
+            Box(Modifier.fillMaxWidth().padding(vertical = 8.dp), contentAlignment = Alignment.Center) {
+                val frac = when { breath > 0 -> breath / 2f; target > 0 -> count / target.toFloat(); else -> (count % 20) / 20f }
+                val col = if (breath > 0) p.good else p.blue
+                Canvas(Modifier.size(270.dp)) {
+                    val st = 8.dp.toPx()
+                    drawArc(p.hair, 0f, 360f, false, Offset(st / 2, st / 2), Size(size.width - st, size.height - st), style = Stroke(st))
+                    drawArc(col, -90f, 360f * frac, false, Offset(st / 2, st / 2), Size(size.width - st, size.height - st), style = Stroke(st, cap = StrokeCap.Round))
                 }
-                if (tick < alarmUntil) {
-                    Text("2 דקות: ניתוח קצב והחלפת מעסה", Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(p.bad).padding(14.dp),
-                        color = Color.White, fontWeight = FontWeight.ExtraBold, textAlign = TextAlign.Center, fontSize = 17.sp)
-                }
-                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    PrimaryButton(if (running) "השהה" else if (count > 0) "המשך" else "התחל", Modifier.weight(1f)) {
-                        if (!running && cycleStart == 0L) cycleStart = nowMillis()
-                        running = !running
-                    }
-                    GhostButton("איפוס") { running = false; count = 0; breath = 0; elapsed = 0; cycles = 0; cycleStart = 0; alarmUntil = 0 }
-                }
-                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Stat(fmt(elapsed), "זמן כולל", Modifier.weight(1f))
-                    Stat(if (cycleStart == 0L) "0:00" else fmt(tick - cycleStart), "מחזור נוכחי", Modifier.weight(1f))
-                    Stat("$cycles", "מחזורים", Modifier.weight(1f))
-                }
-                SectionTitle("מצב", Modifier.padding(top = 8.dp))
-                Panel {
-                    Segmented(listOf("30" to "30:2", "15" to "15:2", "cont" to "רציף"), mode) { mode = it; count = 0; breath = 0 }
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(if (breath > 0) "$breath" else "$count", color = if (breath > 0) p.good else p.ink, fontSize = 76.sp, fontWeight = FontWeight.Black)
                     Text(
-                        when (mode) {
-                            "30" -> "מבוגר: 30 עיסויים ו-2 הנשמות"
-                            "15" -> "ילד ותינוק בשני מטפלים: 15 עיסויים ו-2 הנשמות"
-                            else -> "עיסויים רציפים עם הנשמה כל 6 שניות (נתיב אוויר מתקדם)"
-                        },
-                        color = p.muted, fontSize = 14.sp, lineHeight = 20.sp,
+                        when { breath > 0 -> "הנשמה"; running && target > 0 -> "עיסויים מתוך $target"; running -> "עיסויים רציפים"; count > 0 -> "בהשהיה"; else -> "מוכן" },
+                        color = p.muted, fontWeight = FontWeight.SemiBold,
                     )
-                    Eyebrow("קצב (לדקה)")
-                    Segmented(listOf("100" to "100", "110" to "110", "120" to "120"), bpm.toString()) { bpm = it.toInt() }
                 }
-                BottomSpace(40.dp)
             }
-        }
+            if (tick < alarmUntil) {
+                Text("2 דקות: ניתוח קצב והחלפת מעסה", Modifier.fillMaxWidth().clip(RoundedCornerShape(50)).background(p.bad).padding(14.dp),
+                    color = Color.White, fontWeight = FontWeight.ExtraBold, textAlign = TextAlign.Center, fontSize = 17.sp)
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                PrimaryButton(if (running) "השהה" else if (count > 0) "המשך" else "התחל", Modifier.weight(1f)) {
+                    if (!running && cycleStart == 0L) cycleStart = nowMillis()
+                    running = !running
+                }
+                GhostButton("איפוס") { running = false; count = 0; breath = 0; elapsed = 0; cycles = 0; cycleStart = 0; alarmUntil = 0 }
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Stat(fmt(elapsed), "זמן כולל", Modifier.weight(1f))
+                Stat(if (cycleStart == 0L) "0:00" else fmt(tick - cycleStart), "מחזור נוכחי", Modifier.weight(1f))
+                Stat("$cycles", "מחזורים", Modifier.weight(1f))
+            }
+            SectionTitle("מצב", Modifier.padding(top = 8.dp))
+            Panel {
+                Segmented(listOf("30" to "30:2", "15" to "15:2", "cont" to "רציף"), mode) { mode = it; count = 0; breath = 0 }
+                Text(
+                    when (mode) {
+                        "30" -> "מבוגר: 30 עיסויים ו-2 הנשמות"
+                        "15" -> "ילד ותינוק בשני מטפלים: 15 עיסויים ו-2 הנשמות"
+                        else -> "עיסויים רציפים עם הנשמה כל 6 שניות (נתיב אוויר מתקדם)"
+                    },
+                    color = p.muted, fontSize = 14.sp, lineHeight = 20.sp,
+                )
+                Eyebrow("קצב (לדקה)")
+                Segmented(listOf("100" to "100", "110" to "110", "120" to "120"), bpm.toString()) { bpm = it.toInt() }
+            }
     }
 }
 
 @Composable
 internal fun Stat(value: String, label: String, modifier: Modifier) {
     val p = Pal
-    Column(modifier.clip(RoundedCornerShape(18.dp)).background(p.paper).padding(vertical = 14.dp, horizontal = 8.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(2.dp)) {
-        Text(value, color = p.ink, fontSize = 22.sp, fontWeight = FontWeight.SemiBold)
+    Column(modifier.glass(RoundedCornerShape(24.dp), elevation = 6.dp).padding(vertical = 14.dp, horizontal = 8.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Text(value, color = p.ink, fontSize = 22.sp, fontWeight = FontWeight.Black)
         Text(label, color = p.muted, fontSize = 12.5.sp, textAlign = TextAlign.Center, maxLines = 1)
     }
 }
@@ -177,42 +170,36 @@ fun AccountScreen(model: AppModel, nav: Nav) {
     val scope = rememberCoroutineScope()
     val welcome = model.justCreated
 
-    Column(Modifier.fillMaxSize()) {
-        AppBar("חשבון וסנכרון") { nav.back() }
-        Column(Modifier.weight(1f).sheetBackdrop().verticalScroll(rememberScrollState()).padding(top = 16.dp)) {
-            Sheet {
-                val user = model.user
-                if (user != null) {
-                    if (welcome) Text("נוצר לך חשבון חדש. ההתקדמות שלך תישמר ותסתנכרן בין המכשירים.", color = p.good, fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
-                    Panel {
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                            Box(Modifier.size(54.dp).clip(CircleShape).background(p.blue), contentAlignment = Alignment.Center) {
-                                Text(user.name.ifBlank { user.email }.take(1).uppercase(), color = Color.White, fontSize = 23.sp, fontWeight = FontWeight.Bold)
-                            }
-                            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                                Text(user.name.ifBlank { "משתמש" }, color = p.ink, fontSize = 18.sp, fontWeight = FontWeight.Bold)
-                                Text(user.email, color = p.muted, fontSize = 14.sp)
-                                if (user.instructor) Pill("מדריך", p.blue, p.blueSoft)
-                            }
+    GlassPage("חשבון וסנכרון", { nav.back() }) {
+            val user = model.user
+            if (user != null) {
+                if (welcome) Text("נוצר לך חשבון חדש. ההתקדמות שלך תישמר ותסתנכרן בין המכשירים.", color = p.good, fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
+                Panel {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                        Box(Modifier.size(58.dp).clip(CircleShape).background(Brush.linearGradient(listOf(p.bandA, p.bandB))), contentAlignment = Alignment.Center) {
+                            Text(user.name.ifBlank { user.email }.take(1).uppercase(), color = Color.White, fontSize = 23.sp, fontWeight = FontWeight.Bold)
                         }
-                        val state = model.syncState
-                        Text(
-                            when (state) {
-                                AppModel.SyncState.Working -> "מסנכרן…"
-                                AppModel.SyncState.Ok -> "✓ ההתקדמות נשמרת בשרת"
-                                AppModel.SyncState.Error -> "שגיאת סנכרון: ${model.syncMessage}"
-                                AppModel.SyncState.Idle -> "ההתקדמות תסונכרן בסוף כל תרגול"
-                            },
-                            color = when (state) { AppModel.SyncState.Error -> p.bad; AppModel.SyncState.Ok -> p.good; else -> p.muted },
-                            fontSize = 14.5.sp,
-                        )
+                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                            Text(user.name.ifBlank { "משתמש" }, color = p.ink, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                            Text(user.email, color = p.muted, fontSize = 14.sp)
+                            if (user.instructor) Pill("מדריך", p.blue, p.blueSoft)
+                        }
                     }
-                    PrimaryButton("סנכרן עכשיו", Modifier.fillMaxWidth()) { scope.launch { model.sync() } }
-                    UserSettings(model)
+                    val state = model.syncState
+                    Text(
+                        when (state) {
+                            AppModel.SyncState.Working -> "מסנכרן…"
+                            AppModel.SyncState.Ok -> "✓ ההתקדמות נשמרת בשרת"
+                            AppModel.SyncState.Error -> "שגיאת סנכרון: ${model.syncMessage}"
+                            AppModel.SyncState.Idle -> "ההתקדמות תסונכרן בסוף כל תרגול"
+                        },
+                        color = when (state) { AppModel.SyncState.Error -> p.bad; AppModel.SyncState.Ok -> p.good; else -> p.muted },
+                        fontSize = 14.5.sp,
+                    )
                 }
-                BottomSpace(40.dp)
+                PrimaryButton("סנכרן עכשיו", Modifier.fillMaxWidth(), icon = Icons.pulse) { scope.launch { model.sync() } }
+                UserSettings(model)
             }
-        }
     }
 }
 
@@ -266,32 +253,29 @@ private fun UserSettings(model: AppModel) {
         }
     }
 
-    if (!guest) GhostButton("התנתק", Modifier.fillMaxWidth()) { model.logout() }
+    if (!guest) GhostButton("התנתק", Modifier.fillMaxWidth(), icon = Icons.logout) { model.logout() }
 
     SectionRow("מחיקת חשבון", "מוחק את החשבון ואת כל ההתקדמות", open == "delete", danger = true) { toggle("delete") }
     if (open == "delete") {
         Text("החשבון וכל ההתקדמות יימחקו מהשרת ומהמכשיר הזה. אי אפשר לבטל את המחיקה.", color = p.muted, fontSize = 14.sp)
         if (!guest) Field("סיסמה לאישור", deleteState, KeyboardType.Password, secret = true)
         Box(
-            Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(if ((guest || deleteState.text.isNotEmpty()) && !busy) p.bad else p.bad.copy(alpha = .4f))
-                .clickable(enabled = (guest || deleteState.text.isNotEmpty()) && !busy) { confirmDelete = true }.padding(vertical = 15.dp),
+            Modifier.fillMaxWidth().bouncy(enabled = (guest || deleteState.text.isNotEmpty()) && !busy) { confirmDelete = true }
+                .clip(RoundedCornerShape(50)).background(if ((guest || deleteState.text.isNotEmpty()) && !busy) p.bad else p.bad.copy(alpha = .4f)).padding(vertical = 16.dp),
             contentAlignment = Alignment.Center,
         ) { Text("מחק את החשבון", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 17.sp) }
     }
 
     if (confirmDelete) {
-        AlertDialog(
-            onDismissRequest = { confirmDelete = false },
-            title = { Text("למחוק את החשבון?") },
-            text = { Text(if (guest) "החשבון וכל ההתקדמות יימחקו לצמיתות." else "החשבון ${model.user?.email.orEmpty()} וכל ההתקדמות יימחקו לצמיתות.") },
-            confirmButton = {
-                TextButton(onClick = {
-                    confirmDelete = false
-                    run("החשבון נמחק") { model.deleteAccount(deleteState.text.toString()) }
-                }) { Text("מחק", color = p.bad, fontWeight = FontWeight.Bold) }
+        ConfirmDialog(
+            "למחוק את החשבון?",
+            if (guest) "החשבון וכל ההתקדמות יימחקו לצמיתות." else "החשבון ${model.user?.email.orEmpty()} וכל ההתקדמות יימחקו לצמיתות.",
+            confirm = "מחק", destructive = true,
+            onConfirm = {
+                confirmDelete = false
+                run("החשבון נמחק") { model.deleteAccount(deleteState.text.toString()) }
             },
-            dismissButton = { TextButton(onClick = { confirmDelete = false }) { Text("ביטול") } },
-            containerColor = p.surface, titleContentColor = p.ink, textContentColor = p.ink,
+            onDismiss = { confirmDelete = false },
         )
     }
 }
@@ -300,11 +284,11 @@ private fun UserSettings(model: AppModel) {
 private fun SectionRow(title: String, subtitle: String, expanded: Boolean, danger: Boolean = false, onClick: () -> Unit) {
     val p = Pal
     Row(
-        Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(p.paper).clickable(onClick = onClick).padding(horizontal = 18.dp, vertical = 16.dp),
+        Modifier.fillMaxWidth().bouncy(onClick = onClick).glass(RoundedCornerShape(24.dp), elevation = 6.dp).padding(horizontal = 18.dp, vertical = 16.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Column(Modifier.weight(1f)) {
-            Text(title, color = if (danger) p.bad else p.ink, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+            Text(title, color = if (danger) p.bad else p.ink, fontSize = 16.sp, fontWeight = FontWeight.Bold)
             Text(subtitle, color = p.muted, fontSize = 13.5.sp)
         }
         // Chevron: points forward (left in RTL) when closed, down when open.
@@ -312,12 +296,29 @@ private fun SectionRow(title: String, subtitle: String, expanded: Boolean, dange
     }
 }
 
+/** Glass text field with a floating label above the text. */
 @Composable
 internal fun Field(label: String, state: TextFieldState, type: KeyboardType, secret: Boolean = false) {
+    val p = Pal
     val options = KeyboardOptions(keyboardType = type, autoCorrectEnabled = false, capitalization = KeyboardCapitalization.None)
-    if (secret) {
-        OutlinedSecureTextField(state = state, label = { Text(label) }, keyboardOptions = options, modifier = Modifier.fillMaxWidth())
-    } else {
-        OutlinedTextField(state = state, label = { Text(label) }, lineLimits = TextFieldLineLimits.SingleLine, keyboardOptions = options, modifier = Modifier.fillMaxWidth())
+    val style = androidx.compose.ui.text.TextStyle(color = p.ink, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+    val src = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+    val focused by src.collectIsFocusedAsState()
+    val shape = RoundedCornerShape(22.dp)
+    Column(
+        Modifier.fillMaxWidth().clip(shape)
+            .background(if (p.dark) Color.White.copy(alpha = .06f) else Color.White.copy(alpha = .55f))
+            .border(if (focused) 1.5.dp else 1.dp, if (focused) p.blue else p.hair, shape)
+            .padding(horizontal = 16.dp, vertical = 10.dp),
+        verticalArrangement = Arrangement.spacedBy(2.dp),
+    ) {
+        Text(label, color = if (focused) p.blue else p.muted, fontSize = 12.5.sp, fontWeight = FontWeight.Bold)
+        if (secret) androidx.compose.foundation.text.BasicSecureTextField(
+            state, textStyle = style, keyboardOptions = options, interactionSource = src,
+            cursorBrush = androidx.compose.ui.graphics.SolidColor(p.blue), modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+        ) else androidx.compose.foundation.text.BasicTextField(
+            state, textStyle = style, keyboardOptions = options, lineLimits = TextFieldLineLimits.SingleLine, interactionSource = src,
+            cursorBrush = androidx.compose.ui.graphics.SolidColor(p.blue), modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+        )
     }
 }

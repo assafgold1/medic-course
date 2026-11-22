@@ -19,29 +19,49 @@ import androidx.compose.ui.unit.dp
 
 @Immutable
 data class Palette(
+    val dark: Boolean,
     val bandA: Color, val bandB: Color, val blue: Color, val blueSoft: Color,
     val paper: Color, val surface: Color, val ink: Color, val muted: Color, val line: Color, val hair: Color,
     val good: Color, val goodSoft: Color, val mid: Color, val midSoft: Color, val bad: Color, val badSoft: Color,
+    /** Opaque fill for dialogs and other surfaces that must hide what is behind them. */
+    val solid: Color,
+    /** Ambient backdrop: base gradient and the glowing blobs that drift behind the glass. */
+    val baseTop: Color, val baseBottom: Color, val blobs: List<Color>,
+    /** Glass material: fill gradient and the specular rim. */
+    val glassTop: Color, val glassBottom: Color, val rimHi: Color, val rimLo: Color, val glassShadow: Color,
 ) {
+    /** Accent gradient (brand orange to warm coral), used by primary buttons, rings and bars. */
     val band get() = Brush.linearGradient(listOf(bandA, bandB))
     fun tone(p: Int) = if (p >= 80) good else if (p >= 50) mid else bad
     fun toneSoft(p: Int) = if (p >= 80) goodSoft else if (p >= 50) midSoft else badSoft
 }
 
-// Brand orange (#F26922) on white. Token names kept from the first design: "blue" is the brand accent.
+// Brand orange (#F26922) as liquid light under frosted glass. Token names kept from the first design: "blue" is the brand accent.
 private val Light = Palette(
-    bandA = Color(0xFFF26922), bandB = Color(0xFFFF8F45), blue = Color(0xFFD9520E), blueSoft = Color(0xFFFFEEE3),
-    paper = Color(0xFFFFF6F0), surface = Color.White, ink = Color(0xFF1F1A17), muted = Color(0xFF7A6A60),
-    line = Color(0xFFF6C4A6), hair = Color(0xFFF5E5DA),
-    good = Color(0xFF16A34A), goodSoft = Color(0xFFE3F6EA), mid = Color(0xFFD48806), midSoft = Color(0xFFFDF2DC),
-    bad = Color(0xFFD92D2D), badSoft = Color(0xFFFBE4E4),
+    dark = false,
+    bandA = Color(0xFFFF7A1F), bandB = Color(0xFFFF3D6E), blue = Color(0xFFE2560B), blueSoft = Color(0x24F26922),
+    paper = Color(0x66FFFFFF), surface = Color(0x9EFFFFFF), ink = Color(0xFF1C1411), muted = Color(0xFF7C6A62),
+    line = Color(0x55F26922), hair = Color(0x14000000),
+    good = Color(0xFF0E9F55), goodSoft = Color(0x2416A34A), mid = Color(0xFFC97A00), midSoft = Color(0x26F5A400),
+    bad = Color(0xFFE0263B), badSoft = Color(0x22E0263B),
+    solid = Color(0xFFFFFBF8),
+    baseTop = Color(0xFFFFF3EA), baseBottom = Color(0xFFFCE7EE),
+    blobs = listOf(Color(0xFFFF8A3D), Color(0xFFFF4F7B), Color(0xFFFFC34D), Color(0xFFA996FF), Color(0xFFFF6A2A)),
+    glassTop = Color(0xB8FFFFFF), glassBottom = Color(0x80FFFFFF), rimHi = Color(0xF2FFFFFF), rimLo = Color(0x33FFFFFF),
+    glassShadow = Color(0x22B4501E),
 )
 private val Dark = Palette(
-    bandA = Color(0xFFB8460E), bandB = Color(0xFFE5651F), blue = Color(0xFFFF8A47), blueSoft = Color(0xFF3A2114),
-    paper = Color(0xFF140D09), surface = Color(0xFF20140E), ink = Color(0xFFF6ECE6), muted = Color(0xFFBFA595),
-    line = Color(0xFF5A3524), hair = Color(0xFF3A261B),
-    good = Color(0xFF3DD47A), goodSoft = Color(0xFF123523), mid = Color(0xFFF2B73F), midSoft = Color(0xFF3A2C0E),
-    bad = Color(0xFFFF6B6B), badSoft = Color(0xFF3D1717),
+    dark = true,
+    bandA = Color(0xFFFF7A1F), bandB = Color(0xFFFF3D6E), blue = Color(0xFFFF8E4D), blueSoft = Color(0x2EFF7A1F),
+    paper = Color(0x0FFFFFFF), surface = Color(0x17FFFFFF), ink = Color(0xFFFBF2EC), muted = Color(0xFFB8A39A),
+    line = Color(0x66FF8E4D), hair = Color(0x1AFFFFFF),
+    good = Color(0xFF3EE08A), goodSoft = Color(0x2E3EE08A), mid = Color(0xFFFFC147), midSoft = Color(0x2EFFC147),
+    bad = Color(0xFFFF5C6E), badSoft = Color(0x30FF5C6E),
+    solid = Color(0xFF1C1316),
+    baseTop = Color(0xFF0E0807), baseBottom = Color(0xFF150A12),
+    blobs = listOf(Color(0xFFE5550F), Color(0xFFD0245C), Color(0xFFB36B00), Color(0xFF4B3BCB), Color(0xFFFF6A2A)),
+    glassTop = Color(0x26FFFFFF), glassBottom = Color(0x0DFFFFFF), rimHi = Color(0x66FFFFFF), rimLo = Color(0x0FFFFFFF),
+    glassShadow = Color(0x40000000),
 )
 
 val LocalPalette = staticCompositionLocalOf { Light }
@@ -50,8 +70,8 @@ val LocalPalette = staticCompositionLocalOf { Light }
 fun MedicTheme(mode: String = "system", content: @Composable () -> Unit) {
     val dark = when (mode) { "light" -> false; "dark" -> true; else -> isSystemInDarkTheme() }
     val p = if (dark) Dark else Light
-    val scheme = if (dark) darkColorScheme(primary = p.blue, background = p.paper, surface = p.surface, onSurface = p.ink, onBackground = p.ink)
-    else lightColorScheme(primary = p.blue, background = p.paper, surface = p.surface, onSurface = p.ink, onBackground = p.ink)
+    val scheme = if (dark) darkColorScheme(primary = p.blue, background = p.baseTop, surface = p.solid, onSurface = p.ink, onBackground = p.ink)
+    else lightColorScheme(primary = p.blue, background = p.baseTop, surface = p.solid, onSurface = p.ink, onBackground = p.ink)
     CompositionLocalProvider(LocalPalette provides p) {
         MaterialTheme(colorScheme = scheme, content = content)
     }
@@ -90,6 +110,26 @@ object Icons {
     val gear = icon("gear", "M15 12a3 3 0 1 1-6 0a3 3 0 1 1 6 0z",
         "M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z")
     val search = icon("search", "M17 10.5a6.5 6.5 0 1 1-13 0a6.5 6.5 0 1 1 13 0z", "M15.5 15.5 20 20")
+
+    val forward = icon("forward", "M15 6l-6 6 6 6")
+    val close = icon("close", "M6 6l12 12M18 6 6 18")
+    val bolt = icon("bolt", "M13 2.5 4.5 13.5H11l-1 8 8.5-11H12l1-8z")
+    val flame = icon("flame", "M12 21c-3.9 0-6.5-2.6-6.5-6.2 0-3.4 2.4-5.4 3.6-8.3.9 1.6 1.2 2.8 1.2 4 1.2-.7 2.3-2.6 2.3-5.5 3 2.2 5.9 5.6 5.9 9.8 0 3.6-2.6 6.2-6.5 6.2z")
+    val bookmark = icon("bookmark", "M6.5 3.5h11v17l-5.5-4-5.5 4z")
+    val sparkle = icon("sparkle", "M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z", "M19 16l.7 1.8 1.8.7-1.8.7L19 21l-.7-1.8-1.8-.7 1.8-.7z")
+    val trophy = icon("trophy", "M7.5 4h9v5a4.5 4.5 0 0 1-9 0V4z", "M7.5 6H4.5a3 3 0 0 0 3 4M16.5 6h3a3 3 0 0 1-3 4M12 13.5V17M8.5 20.5h7M9.5 17h5v3.5h-5z")
+    val shield = icon("shield", "M12 3l7.5 3v5.5c0 4.6-3.2 8.2-7.5 9.5-4.3-1.3-7.5-4.9-7.5-9.5V6L12 3z", "M12 8v4.5M12 15.8v.2")
+    val flow = icon("flow", "M9 3.5h6v4H9zM4 16.5h6v4H4zM14 16.5h6v4h-6z", "M12 7.5v4.5M7 16.5V12h10v4.5")
+    val cards = icon("cards", "M8 4h10a2 2 0 0 1 2 2v11", "M4 8a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8z")
+    val eye = icon("eye", "M2.5 12s3.5-6.5 9.5-6.5 9.5 6.5 9.5 6.5-3.5 6.5-9.5 6.5S2.5 12 2.5 12z", "M14.5 12a2.5 2.5 0 1 1-5 0a2.5 2.5 0 1 1 5 0z")
+    val target = icon("target", "M20 12a8 8 0 1 1-16 0a8 8 0 1 1 16 0z", "M16 12a4 4 0 1 1-8 0a4 4 0 1 1 8 0z", "M12.8 12a.8.8 0 1 1-1.6 0a.8.8 0 1 1 1.6 0z")
+    val half = icon("half", "M20 12a8 8 0 1 1-16 0a8 8 0 1 1 16 0z", "M12 4v16")
+    val moon = icon("moon", "M19.5 14.5A8 8 0 0 1 9.5 4.5a8 8 0 1 0 10 10z")
+    val sound = icon("sound", "M4 9.5h3.5L12 5.5v13l-4.5-4H4z", "M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11")
+    val textSize = icon("textSize", "M3.5 18 8 6l4.5 12M5.2 14h5.6", "M14 18l3-8 3 8M15.1 15.5h3.8")
+    val logout = icon("logout", "M14 4.5H6.5a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2H14", "M10 12h10M16.5 8.5 20 12l-3.5 3.5")
+    val trash = icon("trash", "M4.5 7h15M9.5 7V4.5h5V7M6.5 7l1 13h9l1-13")
+    val info = icon("info", "M20 12a8 8 0 1 1-16 0a8 8 0 1 1 16 0z", "M12 11v5.5M12 7.8v.2")
 
     fun forCategory(id: String) = when (id) {
         "anat" -> anat; "cpr" -> cpr; "dev" -> dev; "basics" -> basics; "medical" -> medical

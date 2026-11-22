@@ -1,6 +1,22 @@
 package com.taninoni.medic.ui
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
+import dev.chrisbanes.haze.hazeSource
+import dev.chrisbanes.haze.HazePerformanceMode
+import dev.chrisbanes.haze.LocalHazePerformanceMode
+import dev.chrisbanes.haze.rememberHazeState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.CircularProgressIndicator
@@ -50,13 +66,16 @@ sealed interface Screen {
 class Nav {
     val stack = mutableStateListOf<Screen>(Screen.Home)
     val current get() = stack.last()
-    fun go(s: Screen) { stack.add(s) }
-    fun replace(s: Screen) { stack.removeAt(stack.lastIndex); stack.add(s) }
-    fun back(): Boolean = if (stack.size > 1) { stack.removeAt(stack.lastIndex); true } else false
-    fun home() { while (stack.size > 1) stack.removeAt(stack.lastIndex) }
+    /** Direction of the last move, for the screen transition: 1 push, -1 pop, 0 tab switch or replace. */
+    var lastMove = 0
+        private set
+    fun go(s: Screen) { lastMove = 1; stack.add(s) }
+    fun replace(s: Screen) { lastMove = 0; stack.removeAt(stack.lastIndex); stack.add(s) }
+    fun back(): Boolean = if (stack.size > 1) { lastMove = -1; stack.removeAt(stack.lastIndex); true } else false
+    fun home() { lastMove = -1; while (stack.size > 1) stack.removeAt(stack.lastIndex) }
 
     /** Switches to a bottom-bar tab. Tabs sit directly on top of Home, so system back returns there. */
-    fun tab(s: Screen) { home(); if (s != Screen.Home) stack.add(s) }
+    fun tab(s: Screen) { home(); if (s != Screen.Home) stack.add(s); lastMove = 0 }
     val onTab get() = current in TABS.map { it.screen }
 }
 
@@ -94,36 +113,62 @@ fun App() {
             LocalDensity provides Density(density.density, density.fontScale * model.textScale),
             LocalSoundOn provides model.soundOn,
         ) {
-            Box(Modifier.fillMaxSize().background(Pal.paper)) {
+            val haze = rememberHazeState()
+            CompositionLocalProvider(LocalHaze provides haze, LocalHazePerformanceMode provides HazePerformanceMode.Performance) {
+            Box(Modifier.fillMaxSize().background(Pal.baseTop)) {
+                AmbientBackdrop(Modifier.hazeSource(haze, zIndex = 0f))
                 if (model.content == null) {
                     CircularProgressIndicator(Modifier.align(Alignment.Center), color = Pal.blue)
                 } else if (model.user == null) {
                     // Sign-in is required: instructors follow each student's progress.
                     LoginScreen(model)
                 } else CompositionLocalProvider(LocalBottomInset provides if (nav.onTab) TAB_BAR_SPACE else 0.dp) {
-                    when (val s = nav.current) {
-                        Screen.Home -> HomeScreen(model, nav)
-                        Screen.Picker -> PickerScreen(model, nav)
-                        is Screen.Topic -> TopicScreen(model, nav, s.id)
-                        is Screen.Quiz -> QuizScreen(model, nav, s)
-                        is Screen.Results -> ResultsScreen(model, nav, s)
-                        is Screen.Blitz -> BlitzScreen(model, nav, s)
-                        Screen.AnatomyQuiz -> AnatomyQuizScreen(model, nav)
-                        Screen.Metronome -> MetronomeScreen(model, nav)
-                        Screen.Aed -> AedScreen(model, nav)
-                        Screen.Reference -> ReferenceScreen(model, nav)
-                        Screen.Protocols -> ProtocolsScreen(model, nav)
-                        is Screen.ProtocolView -> ProtocolScreen(model, nav, s.id)
-                        Screen.Account -> AccountScreen(model, nav)
-                        Screen.Settings -> SettingsScreen(model, nav)
-                        Screen.Instructor -> InstructorScreen(model, nav)
-                        is Screen.Student -> StudentScreen(model, nav, s.id)
+                    // Pushes slide in from the start edge over a fade; going back reverses it; tabs cross-fade.
+                    AnimatedContent(
+                        targetState = nav.current,
+                        transitionSpec = {
+                            val depth = nav.lastMove
+                            if (depth == 0) {
+                                (fadeIn(tween(220)) + scaleIn(tween(260), initialScale = .985f)) togetherWith fadeOut(tween(160))
+                            } else {
+                                val dir = if (depth > 0) 1 else -1
+                                (slideInHorizontally(spring(dampingRatio = .9f, stiffness = 420f)) { w -> -dir * w / 3 } + fadeIn(tween(220))) togetherWith
+                                    (slideOutHorizontally(tween(260)) { w -> dir * w / 5 } + fadeOut(tween(180)))
+                            }
+                        },
+                        contentKey = { it },
+                        label = "screen",
+                    ) { s ->
+                        when (s) {
+                            Screen.Home -> HomeScreen(model, nav)
+                            Screen.Picker -> PickerScreen(model, nav)
+                            is Screen.Topic -> TopicScreen(model, nav, s.id)
+                            is Screen.Quiz -> QuizScreen(model, nav, s)
+                            is Screen.Results -> ResultsScreen(model, nav, s)
+                            is Screen.Blitz -> BlitzScreen(model, nav, s)
+                            Screen.AnatomyQuiz -> AnatomyQuizScreen(model, nav)
+                            Screen.Metronome -> MetronomeScreen(model, nav)
+                            Screen.Aed -> AedScreen(model, nav)
+                            Screen.Reference -> ReferenceScreen(model, nav)
+                            Screen.Protocols -> ProtocolsScreen(model, nav)
+                            is Screen.ProtocolView -> ProtocolScreen(model, nav, s.id)
+                            Screen.Account -> AccountScreen(model, nav)
+                            Screen.Settings -> SettingsScreen(model, nav)
+                            Screen.Instructor -> InstructorScreen(model, nav)
+                            is Screen.Student -> StudentScreen(model, nav, s.id)
+                        }
                     }
-                    if (nav.onTab) TabBar(nav, Modifier.align(Alignment.BottomCenter))
+                    AnimatedVisibility(
+                        nav.onTab, Modifier.align(Alignment.BottomCenter),
+                        enter = slideInVertically(spring(dampingRatio = .75f, stiffness = 380f)) { it } + fadeIn(),
+                        exit = slideOutVertically(tween(200)) { it } + fadeOut(tween(150)),
+                    ) { TabBar(nav) }
                     ImageViewerHost()
                 }
                 if (splash) SplashScreen(ready = { model.content != null }) { splash = false }
             }
+            }
         }
     }
 }
+

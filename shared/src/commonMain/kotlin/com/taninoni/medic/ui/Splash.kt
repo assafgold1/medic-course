@@ -15,6 +15,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -73,28 +75,39 @@ fun SplashScreen(ready: () -> Boolean, onDone: () -> Unit) {
         onDone()
     }
 
-    Box(Modifier.fillMaxSize().graphicsLayer { alpha = overlay.value }.background(Color.White), contentAlignment = Alignment.Center) {
+    val p = Pal
+    Box(
+        Modifier.fillMaxSize().graphicsLayer { alpha = overlay.value; scaleX = 1f + (1f - overlay.value) * .08f; scaleY = scaleX }
+            .pointerInput(Unit) { },
+        contentAlignment = Alignment.Center,
+    ) {
+        AmbientBackdrop()
         Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(28.dp)) {
             Box(Modifier.size(260.dp), contentAlignment = Alignment.Center) {
                 Canvas(Modifier.size(260.dp)) {
                     for (r in listOf(ring1.value, ring2.value)) if (r > 0f && r < 1f) {
-                        drawCircle(UhOrange.copy(alpha = (1f - r) * .45f), radius = size.minDimension / 2 * (0.45f + 0.55f * r), style = Stroke(6.dp.toPx() * (1f - r) + 1f))
+                        drawCircle(UhOrange.copy(alpha = (1f - r) * .5f), radius = size.minDimension / 2 * (0.45f + 0.55f * r), style = Stroke(6.dp.toPx() * (1f - r) + 1f))
                     }
                 }
-                Image(
-                    painterResource(Res.drawable.uh_icon), "מסלול חובש",
-                    Modifier.size(150.dp).graphicsLayer {
+                Box(
+                    Modifier.size(176.dp).graphicsLayer {
                         val s = logoScale.value * beat.value
-                        scaleX = s; scaleY = s; rotationZ = logoTurn.value; alpha = logoAlpha.value
-                    },
-                )
+                        scaleX = s; scaleY = s; alpha = logoAlpha.value
+                    }.glass(CircleShape, elevation = 30.dp).background(Color.White.copy(alpha = if (p.dark) .1f else .45f)),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Image(
+                        painterResource(Res.drawable.uh_icon), "מסלול חובש",
+                        Modifier.size(128.dp).graphicsLayer { rotationZ = logoTurn.value },
+                    )
+                }
             }
             Column(
                 Modifier.graphicsLayer { alpha = textAlpha.value; translationY = textShift.value * density },
                 horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
-                Text("מסלול חובש", color = Color(0xFF1F1A17), fontSize = 30.sp, fontWeight = FontWeight.ExtraBold)
-                Text("לימוד ותרגול לקורס חובשים", color = Color(0xFF7A6A60), fontSize = 16.sp)
+                Text("מסלול חובש", color = p.ink, fontSize = 34.sp, fontWeight = FontWeight.Black)
+                Text("לימוד ותרגול לקורס חובשים", color = p.muted, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
             }
         }
     }

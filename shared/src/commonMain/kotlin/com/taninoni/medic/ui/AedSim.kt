@@ -272,58 +272,52 @@ fun AedScreen(model: AppModel, nav: Nav) {
 
     fun stopAll() { job?.cancel(); Speech.stop(); phase = Phase.OFF; flash = false; prompt = "לחצו על הכפתור הירוק כדי להפעיל" }
 
-    Column(Modifier.fillMaxSize()) {
-        AppBar("סימולטור דפיברילטור", null)
-        Column(Modifier.weight(1f).sheetBackdrop().verticalScroll(rememberScrollState()).padding(top = 16.dp)) {
-            Sheet {
-                if (phase == Phase.OFF) Text(
-                    "תרגול מלא של הפעלת דפיברילטור חצי-אוטומטי. בכל הפעלה המטופל והקצב נבחרים באקראי.",
-                    color = p.muted, fontSize = 15.sp, lineHeight = 22.sp,
+    GlassPage("סימולטור דפיברילטור", null) {
+            if (phase == Phase.OFF) Text(
+                "תרגול מלא של הפעלת דפיברילטור חצי-אוטומטי. בכל הפעלה המטופל והקצב נבחרים באקראי.",
+                color = p.muted, fontSize = 15.sp, lineHeight = 22.sp,
+            )
+            if (phase != Phase.OFF && phase != Phase.DONE) {
+                Text(
+                    "מטופל: ${if (child) "ילד בן 5" else "מבוגר"} · דום לב${if (shocks > 0) " · שוקים: $shocks" else ""}",
+                    color = p.ink, fontWeight = FontWeight.SemiBold, fontSize = 15.sp,
                 )
-                if (phase != Phase.OFF && phase != Phase.DONE) {
-                    Text(
-                        "מטופל: ${if (child) "ילד בן 5" else "מבוגר"} · דום לב${if (shocks > 0) " · שוקים: $shocks" else ""}",
-                        color = p.ink, fontWeight = FontWeight.SemiBold, fontSize = 15.sp,
-                    )
-                }
-                AedDevice(
-                    phase = phase, prompt = prompt, rhythm = rhythm, flash = flash, pads = if (phase == Phase.PADS) null else padsType,
-                    count = count, breathing = breathing, cprLeft = cprLeft,
-                    onPower = { if (phase == Phase.OFF || phase == Phase.DONE) powerOn() else stopAll() },
-                    onShock = { shock() },
-                )
-                when (phase) {
-                    Phase.PADS -> PadsStep(padsType, spots, onType = { padsType = it; spots.clear() }, onDone = { padsDone() })
-                    Phase.ANALYZE, Phase.CHARGING, Phase.READY -> Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        SimButton("נוגע במטופל / ממשיך לעסות", p.paper, p.ink, Modifier.weight(1f)) { touch() }
-                        if (phase != Phase.ANALYZE) SimButton(if (cleared) "הוכרז: כולם התרחקו" else "להכריז: \"התרחקו!\"", if (cleared) p.goodSoft else p.badSoft, if (cleared) p.good else p.bad, Modifier.weight(1f)) {
-                            if (!cleared) { cleared = true; if (sound) Speech.say("זהירות, אני נותן שוק. כולם להתרחק.") }
-                        }
-                    }
-                    Phase.CPR -> SimButton("דלג לסוף 2 הדקות (תרגול)", p.paper, p.muted, Modifier.fillMaxWidth()) { skipCpr() }
-                    Phase.CHECK -> Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Text("המכשיר לא ממליץ על שוק. מה עושים עכשיו?", color = p.ink, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                        SimButton("בודקים נשימה ודופק", p.goodSoft, p.good, Modifier.fillMaxWidth()) { finish(true) }
-                        SimButton("ממשיכים עיסויים בלי לבדוק", p.paper, p.ink, Modifier.fillMaxWidth()) { finish(false) }
-                    }
-                    else -> {}
-                }
-                if (phase == Phase.DONE || (phase == Phase.OFF && log.isNotEmpty())) Debrief(log, shocks, cycles)
-                if (phase == Phase.OFF) {
-                    SectionTitle("זוכרים", Modifier.padding(top = 4.dp))
-                    Panel {
-                        listOf(
-                            "קודם בטיחות: הזירה בטוחה, כפפות, ואז מתחילים.",
-                            "מחברים דפיברילטור מוקדם, ובן הזוג ממשיך לעסות בזמן ההדבקה.",
-                            "בזמן ניתוח הקצב ולפני שוק: אף אחד לא נוגע.",
-                            "אחרי שוק, או כשלא מומלץ שוק: מיד חוזרים לעיסויים, 2 דקות.",
-                        ).forEach { Text("• $it", color = p.ink, fontSize = 15.sp, lineHeight = 22.sp) }
-                    }
-                    SimButton("מטרונום חופשי לתרגול על בובה", p.paper, p.blue, Modifier.fillMaxWidth()) { nav.go(Screen.Metronome) }
-                }
-                BottomSpace(40.dp)
             }
-        }
+            AedDevice(
+                phase = phase, prompt = prompt, rhythm = rhythm, flash = flash, pads = if (phase == Phase.PADS) null else padsType,
+                count = count, breathing = breathing, cprLeft = cprLeft,
+                onPower = { if (phase == Phase.OFF || phase == Phase.DONE) powerOn() else stopAll() },
+                onShock = { shock() },
+            )
+            when (phase) {
+                Phase.PADS -> PadsStep(padsType, spots, onType = { padsType = it; spots.clear() }, onDone = { padsDone() })
+                Phase.ANALYZE, Phase.CHARGING, Phase.READY -> Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    SimButton("נוגע במטופל / ממשיך לעסות", p.paper, p.ink, Modifier.weight(1f)) { touch() }
+                    if (phase != Phase.ANALYZE) SimButton(if (cleared) "הוכרז: כולם התרחקו" else "להכריז: \"התרחקו!\"", if (cleared) p.goodSoft else p.badSoft, if (cleared) p.good else p.bad, Modifier.weight(1f)) {
+                        if (!cleared) { cleared = true; if (sound) Speech.say("זהירות, אני נותן שוק. כולם להתרחק.") }
+                    }
+                }
+                Phase.CPR -> SimButton("דלג לסוף 2 הדקות (תרגול)", p.paper, p.muted, Modifier.fillMaxWidth()) { skipCpr() }
+                Phase.CHECK -> Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text("המכשיר לא ממליץ על שוק. מה עושים עכשיו?", color = p.ink, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                    SimButton("בודקים נשימה ודופק", p.goodSoft, p.good, Modifier.fillMaxWidth()) { finish(true) }
+                    SimButton("ממשיכים עיסויים בלי לבדוק", p.paper, p.ink, Modifier.fillMaxWidth()) { finish(false) }
+                }
+                else -> {}
+            }
+            if (phase == Phase.DONE || (phase == Phase.OFF && log.isNotEmpty())) Debrief(log, shocks, cycles)
+            if (phase == Phase.OFF) {
+                SectionTitle("זוכרים", Modifier.padding(top = 4.dp))
+                Panel {
+                    listOf(
+                        "קודם בטיחות: הזירה בטוחה, כפפות, ואז מתחילים.",
+                        "מחברים דפיברילטור מוקדם, ובן הזוג ממשיך לעסות בזמן ההדבקה.",
+                        "בזמן ניתוח הקצב ולפני שוק: אף אחד לא נוגע.",
+                        "אחרי שוק, או כשלא מומלץ שוק: מיד חוזרים לעיסויים, 2 דקות.",
+                    ).forEach { Text("• $it", color = p.ink, fontSize = 15.sp, lineHeight = 22.sp) }
+                }
+                SimButton("מטרונום חופשי לתרגול על בובה", p.paper, p.blue, Modifier.fillMaxWidth()) { nav.go(Screen.Metronome) }
+            }
     }
 }
 

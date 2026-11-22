@@ -101,20 +101,20 @@ fun BlitzScreen(model: AppModel, nav: Nav, s: Screen.Blitz) {
 
     LaunchedEffect(index) { scroll.scrollTo(0) }
 
-    Column(Modifier.fillMaxSize()) {
-        AppBar("אתגר 60 שניות") { nav.back() }
+    GlassPage("אתגר 60 שניות", { nav.back() }, scroll = scroll, showLargeTitle = false) {
         if (items.isEmpty()) {
-            Sheet(Modifier.padding(top = 16.dp)) {
+            Panel {
                 Text("אין שאלות זמינות כרגע.", color = p.muted, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
             }
-            return@Column
+            return@GlassPage
         }
         if (finished) {
-            Column(Modifier.weight(1f).sheetBackdrop().verticalScroll(scroll).padding(top = 16.dp)) {
-                Sheet {
+            Column(Modifier.fillMaxWidth()) {
+                Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                     Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         Eyebrow(if (isNewRecord) "שיא אישי חדש!" else "נגמר הזמן")
-                        Text("$score", color = p.blue, fontSize = 60.sp, fontWeight = FontWeight.ExtraBold)
+                        IconTile(Icons.bolt, p.mid, size = 64.dp, solid = true)
+                        Text("$score", color = p.blue, fontSize = 64.sp, fontWeight = FontWeight.Black)
                         Text("נקודות ב-60 שניות", color = p.muted, fontSize = 15.sp)
                     }
                     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -126,17 +126,16 @@ fun BlitzScreen(model: AppModel, nav: Nav, s: Screen.Blitz) {
                         nav.replace(Screen.Blitz(model.allItems.shuffled()))
                     }
                     GhostButton("חזרה לתרגול", Modifier.fillMaxWidth()) { nav.back() }
-                    BottomSpace(40.dp)
                 }
             }
-            return@Column
+            return@GlassPage
         }
 
         val item = items[index]
         val timerColor = if (secondsLeft <= 10) p.bad else p.blue
         val timerBg = if (secondsLeft <= 10) p.badSoft else p.blueSoft
-        Column(Modifier.weight(1f).sheetBackdrop().verticalScroll(scroll).padding(top = 16.dp)) {
-            Sheet {
+        Column(Modifier.fillMaxWidth()) {
+            Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("${secondsLeft} שנ'",
                         Modifier.clip(RoundedCornerShape(50)).background(timerBg).padding(horizontal = 12.dp, vertical = 5.dp),
@@ -153,7 +152,7 @@ fun BlitzScreen(model: AppModel, nav: Nav, s: Screen.Blitz) {
                     Text(item.topic.title, color = p.muted, fontSize = 12.5.sp, maxLines = 1)
                 }
                 ProgressBar(secondsLeft / 60f, timerColor)
-                Text(item.question.q, color = p.ink, fontSize = 19.sp, fontWeight = FontWeight.SemiBold, lineHeight = 28.sp, modifier = Modifier.padding(top = 6.dp, bottom = 4.dp))
+                Text(item.question.q, color = p.ink, fontSize = 21.sp, fontWeight = FontWeight.ExtraBold, lineHeight = 30.sp, modifier = Modifier.padding(top = 6.dp, bottom = 4.dp))
                 orders[index].forEachIndexed { k, o ->
                     val chosen = picked
                     val state = when {
@@ -163,11 +162,11 @@ fun BlitzScreen(model: AppModel, nav: Nav, s: Screen.Blitz) {
                         else -> 0
                     }
                     val border = when (state) { 1 -> p.good; 2 -> p.bad; else -> p.hair }
-                    val bg = when (state) { 1 -> p.goodSoft; 2 -> p.badSoft; else -> p.surface }
-                    val shape = RoundedCornerShape(18.dp)
+                    val shape = RoundedCornerShape(24.dp)
                     Row(
-                        Modifier.fillMaxWidth().clip(shape).border(if (state == 0) 1.5.dp else 2.dp, border, shape).background(bg)
-                            .clickable(enabled = chosen == null) {
+                        Modifier.fillMaxWidth().glass(shape, tint = if (state == 0) Color.Unspecified else border.copy(alpha = .13f), elevation = if (state == 0) 4.dp else 12.dp)
+                            .then(if (state != 0) Modifier.border(2.dp, border, shape) else Modifier)
+                            .bouncy(enabled = chosen == null) {
                                 picked = o
                                 answered++
                                 val ok = o == 0
@@ -189,13 +188,12 @@ fun BlitzScreen(model: AppModel, nav: Nav, s: Screen.Blitz) {
                         horizontalArrangement = Arrangement.spacedBy(14.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Box(Modifier.size(30.dp).clip(RoundedCornerShape(10.dp)).background(if (state == 0) p.paper else border), contentAlignment = Alignment.Center) {
-                            Text(BLITZ_LETTERS[k], color = if (state == 0) p.muted else Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                        Box(Modifier.size(34.dp).clip(CircleShape).background(if (state == 0) p.hair else border), contentAlignment = Alignment.Center) {
+                            Text(BLITZ_LETTERS[k], color = if (state == 0) p.ink.copy(alpha = .7f) else Color.White, fontWeight = FontWeight.Black, fontSize = 14.sp)
                         }
                         Text(item.question.options[o], color = p.ink, fontSize = 16.sp, lineHeight = 23.sp, modifier = Modifier.weight(1f))
                     }
                 }
-                BottomSpace(40.dp)
             }
         }
     }
@@ -227,20 +225,19 @@ fun AnatomyQuizScreen(model: AppModel, nav: Nav) {
     LaunchedEffect(Unit) { AnswerSound.preload() }
     LaunchedEffect(index) { scroll.scrollTo(0) }
 
-    Column(Modifier.fillMaxSize()) {
-        AppBar("זיהוי אנטומיה") { nav.back() }
+    GlassPage("זיהוי אנטומיה", { nav.back() }, scroll = scroll, showLargeTitle = false) {
         if (deck.isEmpty()) {
-            Sheet(Modifier.padding(top = 16.dp)) {
+            Panel {
                 Text("אין תמונות אנטומיה זמינות.", color = p.muted, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
             }
-            return@Column
+            return@GlassPage
         }
         if (index >= deck.size) {
             LaunchedEffect(index) {
                 if (model.soundOn) AnswerSound.play(if (right * 100 / deck.size >= 70) Sfx.PASS else Sfx.FAIL)
             }
-            Column(Modifier.weight(1f).sheetBackdrop().verticalScroll(scroll).padding(top = 16.dp)) {
-                Sheet {
+            Column(Modifier.fillMaxWidth()) {
+                Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                     Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         Eyebrow("סיימת סבב זיהוי")
                         Text("$right/${deck.size}", color = p.ink, fontSize = 52.sp, fontWeight = FontWeight.ExtraBold)
@@ -248,10 +245,9 @@ fun AnatomyQuizScreen(model: AppModel, nav: Nav) {
                     }
                     PrimaryButton("סבב חדש", Modifier.fillMaxWidth()) { roundSeed++; index = 0; right = 0; streak = 0 }
                     GhostButton("חזרה", Modifier.fillMaxWidth()) { nav.back() }
-                    BottomSpace(40.dp)
                 }
             }
-            return@Column
+            return@GlassPage
         }
 
         val q = deck[index]
@@ -261,8 +257,8 @@ fun AnatomyQuizScreen(model: AppModel, nav: Nav) {
             }
         }
 
-        Column(Modifier.weight(1f).sheetBackdrop().verticalScroll(scroll).padding(top = 16.dp)) {
-            Sheet {
+        Column(Modifier.fillMaxWidth()) {
+            Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("זיהוי ${index + 1}/${deck.size}", color = p.muted, fontSize = 14.sp, modifier = Modifier.weight(1f))
                     if (streak >= 2) {
@@ -279,7 +275,7 @@ fun AnatomyQuizScreen(model: AppModel, nav: Nav) {
                 Text(q.spot.name, color = p.ink, fontSize = 22.sp, fontWeight = FontWeight.ExtraBold)
 
                 val ratio = bitmap?.let { it.width.toFloat() / it.height } ?: 1.4f
-                BoxWithConstraints(Modifier.fillMaxWidth().aspectRatio(ratio).clip(RoundedCornerShape(18.dp)).background(Color.White)) {
+                BoxWithConstraints(Modifier.fillMaxWidth().aspectRatio(ratio).glass(RoundedCornerShape(26.dp), elevation = 14.dp).background(Color.White)) {
                     bitmap?.let { Image(it, null, Modifier.fillMaxSize(), contentScale = ContentScale.FillBounds) }
                     val w = maxWidth; val h = maxHeight
                     q.image.spots.forEachIndexed { i, sp ->
@@ -323,7 +319,7 @@ fun AnatomyQuizScreen(model: AppModel, nav: Nav) {
                 if (chosen != null) {
                     val ok = chosen == q.targetIndex
                     Column(
-                        Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(if (ok) p.goodSoft else p.badSoft).padding(18.dp),
+                        Modifier.fillMaxWidth().glass(RoundedCornerShape(26.dp), tint = if (ok) p.goodSoft else p.badSoft).padding(18.dp),
                         verticalArrangement = Arrangement.spacedBy(6.dp),
                     ) {
                         Text(if (ok) "בדיוק!" else "זה היה: ${q.image.spots[chosen].name}", color = if (ok) p.good else p.bad, fontWeight = FontWeight.ExtraBold, fontSize = 17.sp)
@@ -334,7 +330,6 @@ fun AnatomyQuizScreen(model: AppModel, nav: Nav) {
                         index++
                     }
                 }
-                BottomSpace(40.dp)
             }
         }
     }

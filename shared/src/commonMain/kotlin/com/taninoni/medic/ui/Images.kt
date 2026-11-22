@@ -37,6 +37,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
@@ -128,13 +129,13 @@ fun ImageGallery(images: List<TopicImage>) {
     val p = Pal
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("תמונות להמחשה", color = p.ink, fontSize = 19.sp, fontWeight = FontWeight.ExtraBold, modifier = Modifier.weight(1f))
+            Text("תמונות להמחשה", color = p.ink, fontSize = 19.sp, fontWeight = FontWeight.Black, modifier = Modifier.weight(1f))
             Text("${images.size} תמונות", color = p.muted, fontSize = 13.5.sp)
         }
         LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp), contentPadding = PaddingValues(end = 4.dp)) {
             itemsIndexed(images, key = { _, it -> it.file }) { i, img ->
                 Column(
-                    Modifier.width(220.dp).clip(RoundedCornerShape(18.dp)).background(p.paper).clickable { ViewerState.show(images, i) },
+                    Modifier.width(220.dp).bouncy { ViewerState.show(images, i) }.glass(RoundedCornerShape(24.dp), elevation = 6.dp),
                 ) {
                     TopicBitmap(img.file, Modifier.fillMaxWidth().height(150.dp).background(Color.White), ContentScale.Crop)
                     Text(
@@ -175,10 +176,11 @@ fun ImageViewerHost() {
             }
         }
         Box(
-            Modifier.windowInsetsPadding(WindowInsets.safeDrawing).padding(16.dp).size(44.dp).clip(CircleShape)
-                .background(Color.White.copy(.18f)).clickable { ViewerState.close() }.align(Alignment.TopStart),
+            Modifier.windowInsetsPadding(WindowInsets.safeDrawing).padding(16.dp).size(46.dp).align(Alignment.TopStart)
+                .bouncy(label = "סגירה") { ViewerState.close() }.clip(CircleShape)
+                .background(Color.White.copy(.16f)).border(1.dp, Brush.verticalGradient(listOf(Color.White.copy(.5f), Color.White.copy(.05f))), CircleShape),
             contentAlignment = Alignment.Center,
-        ) { Text("✕", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold) }
+        ) { androidx.compose.material3.Icon(Icons.close, "סגירה", tint = Color.White, modifier = Modifier.size(22.dp)) }
     }
 }
 
@@ -189,7 +191,7 @@ fun ImageViewerHost() {
 @Composable
 fun QuestionImage(img: TopicImage, showCaption: Boolean) {
     val p = Pal
-    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(p.paper).clickable { ViewerState.show(listOf(if (showCaption) img else img.copy(caption = "")), 0) }) {
+    Column(Modifier.fillMaxWidth().bouncy(pressedScale = .98f) { ViewerState.show(listOf(if (showCaption) img else img.copy(caption = "")), 0) }.glass(RoundedCornerShape(26.dp), elevation = 12.dp)) {
         TopicBitmap(img.file, Modifier.fillMaxWidth().height(150.dp).background(Color.White), ContentScale.Fit)
         if (showCaption) Text(img.caption, color = p.muted, fontSize = 13.5.sp, lineHeight = 19.sp, modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp))
     }
@@ -200,7 +202,7 @@ fun QuestionImage(img: TopicImage, showCaption: Boolean) {
 fun AnswerImage(img: TopicImage) {
     val p = Pal
     val bitmap = rememberTopicBitmapPublic(img.file)
-    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(p.paper).clickable { ViewerState.show(listOf(img), 0) }) {
+    Column(Modifier.fillMaxWidth().bouncy(pressedScale = .98f) { ViewerState.show(listOf(img), 0) }.glass(RoundedCornerShape(26.dp), elevation = 12.dp)) {
         val ratio = bitmap?.let { frameRatio(it, img.file) } ?: 1.2f
         Box(Modifier.fillMaxWidth().aspectRatio(ratio).background(Color.White)) {
             if (bitmap != null) BitmapView(bitmap, img.file, Modifier.fillMaxSize(), ContentScale.Fit)
@@ -219,7 +221,7 @@ fun InlineImage(img: TopicImage) {
     val soundOn = LocalSoundOn.current
     var selected by remember(img.file) { mutableStateOf<Int?>(null) }
     val bitmap = rememberTopicBitmapPublic(img.file)
-    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(p.paper)) {
+    Column(Modifier.fillMaxWidth().glass(RoundedCornerShape(24.dp), elevation = 6.dp)) {
         val ratio = bitmap?.let { frameRatio(it, img.file) } ?: 1.4f
         androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxWidth().aspectRatio(ratio).background(Color.White)) {
             if (bitmap != null) BitmapView(bitmap, img.file, Modifier.fillMaxSize().clickable { ViewerState.show(listOf(img), 0) }, ContentScale.FillBounds)

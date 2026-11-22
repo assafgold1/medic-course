@@ -62,54 +62,48 @@ fun InstructorScreen(model: AppModel, nav: Nav) {
             .onFailure { error = (it as? ApiException)?.message ?: "אין חיבור לשרת" }
     }
 
-    Column(Modifier.fillMaxSize()) {
-        AppBar("התקדמות החניכים") { nav.back() }
-        Column(Modifier.weight(1f).sheetBackdrop().verticalScroll(rememberScrollState()).padding(top = 16.dp)) {
-            Sheet {
-                val list = students
-                when {
-                    error != null -> Text(error!!, color = p.bad)
-                    list == null -> Text("טוען…", color = p.muted)
-                    else -> {
-                        val active = list.count { nowMillis() - it.lastActive < 7 * 86_400_000L }
-                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                            Stat2("${list.size}", "חניכים", Modifier.weight(1f))
-                            Stat2("$active", "פעילים השבוע", Modifier.weight(1f))
-                            Stat2(if (list.isEmpty()) "0%" else "${list.sumOf { it.mastery } / list.size}%", "שליטה ממוצעת", Modifier.weight(1f))
+    GlassPage("התקדמות החניכים", { nav.back() }) {
+            val list = students
+            when {
+                error != null -> Text(error!!, color = p.bad)
+                list == null -> Text("טוען…", color = p.muted)
+                else -> {
+                    val active = list.count { nowMillis() - it.lastActive < 7 * 86_400_000L }
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Stat2("${list.size}", "חניכים", Modifier.weight(1f))
+                        Stat2("$active", "פעילים השבוע", Modifier.weight(1f))
+                        Stat2(if (list.isEmpty()) "0%" else "${list.sumOf { it.mastery } / list.size}%", "שליטה ממוצעת", Modifier.weight(1f))
+                    }
+                    SearchField(query)
+                    Segmented(listOf("active" to "פעילות אחרונה", "mastery" to "שליטה", "name" to "שם"), sort) { sort = it }
+                    val q = query.text.toString().trim()
+                    val shown = list.filter { q.isEmpty() || it.name.contains(q, true) || it.email.contains(q, true) }.let { l ->
+                        when (sort) {
+                            "mastery" -> l.sortedByDescending { it.mastery }
+                            "name" -> l.sortedBy { it.name.ifBlank { it.email } }
+                            else -> l.sortedByDescending { it.lastActive }
                         }
-                        SearchField(query)
-                        Segmented(listOf("active" to "פעילות אחרונה", "mastery" to "שליטה", "name" to "שם"), sort) { sort = it }
-                        val q = query.text.toString().trim()
-                        val shown = list.filter { q.isEmpty() || it.name.contains(q, true) || it.email.contains(q, true) }.let { l ->
-                            when (sort) {
-                                "mastery" -> l.sortedByDescending { it.mastery }
-                                "name" -> l.sortedBy { it.name.ifBlank { it.email } }
-                                else -> l.sortedByDescending { it.lastActive }
+                    }
+                    if (shown.isEmpty()) Text("אין חניכים להצגה.", color = p.muted)
+                    shown.forEach { s ->
+                        Row(
+                            Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).border(1.dp, p.hair, RoundedCornerShape(20.dp))
+                                .clickable { nav.go(Screen.Student(s.id)) }.padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp),
+                        ) {
+                            Box(Modifier.size(44.dp).clip(CircleShape).background(p.blueSoft), contentAlignment = Alignment.Center) {
+                                Text(s.name.ifBlank { s.email }.take(1).uppercase(), color = p.blue, fontWeight = FontWeight.Bold, fontSize = 18.sp)
                             }
-                        }
-                        if (shown.isEmpty()) Text("אין חניכים להצגה.", color = p.muted)
-                        shown.forEach { s ->
-                            Row(
-                                Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).border(1.dp, p.hair, RoundedCornerShape(20.dp))
-                                    .clickable { nav.go(Screen.Student(s.id)) }.padding(16.dp),
-                                verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp),
-                            ) {
-                                Box(Modifier.size(44.dp).clip(CircleShape).background(p.blueSoft), contentAlignment = Alignment.Center) {
-                                    Text(s.name.ifBlank { s.email }.take(1).uppercase(), color = p.blue, fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                                }
-                                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                                    Text(s.name.ifBlank { s.email }, color = p.ink, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                    Text("${s.answered} שאלות · ${s.attempts} תרגולים · ${ago(s.lastActive)}", color = p.muted, fontSize = 13.sp)
-                                    ProgressBar(s.mastery / 100f, p.tone(s.mastery))
-                                }
-                                Pill("${s.mastery}%", p.tone(s.mastery), p.toneSoft(s.mastery))
+                            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                                Text(s.name.ifBlank { s.email }, color = p.ink, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                Text("${s.answered} שאלות · ${s.attempts} תרגולים · ${ago(s.lastActive)}", color = p.muted, fontSize = 13.sp)
+                                ProgressBar(s.mastery / 100f, p.tone(s.mastery))
                             }
+                            Pill("${s.mastery}%", p.tone(s.mastery), p.toneSoft(s.mastery))
                         }
                     }
                 }
-                BottomSpace(40.dp)
             }
-        }
     }
 }
 
@@ -123,57 +117,51 @@ fun StudentScreen(model: AppModel, nav: Nav, id: Long) {
             .onFailure { error = (it as? ApiException)?.message ?: "אין חיבור לשרת" }
     }
     val d = detail
-    Column(Modifier.fillMaxSize()) {
-        AppBar(d?.student?.let { it.name.ifBlank { it.email } } ?: "חניך") { nav.back() }
-        Column(Modifier.weight(1f).sheetBackdrop().verticalScroll(rememberScrollState()).padding(top = 16.dp)) {
-            Sheet {
-                when {
-                    error != null -> Text(error!!, color = p.bad)
-                    d == null -> Text("טוען…", color = p.muted)
-                    else -> {
-                        val s = d.student
-                        Text(s.email, color = p.muted, fontSize = 14.sp)
-                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                            Stat2("${s.mastery}%", "שליטה בחומר", Modifier.weight(1f))
-                            Stat2("${s.answered}", "שאלות שנענו", Modifier.weight(1f))
-                            Stat2("${s.examsPassed}", "מבחנים שעבר", Modifier.weight(1f))
-                        }
-                        Text("פעילות אחרונה: ${ago(s.lastActive)}", color = p.muted, fontSize = 14.sp)
+    GlassPage(d?.student?.let { it.name.ifBlank { it.email } } ?: "חניך", { nav.back() }) {
+            when {
+                error != null -> Text(error!!, color = p.bad)
+                d == null -> Text("טוען…", color = p.muted)
+                else -> {
+                    val s = d.student
+                    Text(s.email, color = p.muted, fontSize = 14.sp)
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Stat2("${s.mastery}%", "שליטה בחומר", Modifier.weight(1f))
+                        Stat2("${s.answered}", "שאלות שנענו", Modifier.weight(1f))
+                        Stat2("${s.examsPassed}", "מבחנים שעבר", Modifier.weight(1f))
+                    }
+                    Text("פעילות אחרונה: ${ago(s.lastActive)}", color = p.muted, fontSize = 14.sp)
 
-                        SectionTitle("לפי קטגוריה", Modifier.padding(top = 8.dp))
-                        Panel {
-                            d.categories.forEach { c ->
-                                val pct = if (c.total == 0) 0 else c.correct * 100 / c.total
-                                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Text(c.name, color = p.ink, fontSize = 15.sp, fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f))
-                                        Text("${c.correct}/${c.total}", color = p.muted, fontSize = 13.5.sp)
-                                    }
-                                    ProgressBar(pct / 100f, if (c.answered == 0) p.hair else p.tone(pct))
+                    SectionTitle("לפי קטגוריה", Modifier.padding(top = 8.dp))
+                    Panel {
+                        d.categories.forEach { c ->
+                            val pct = if (c.total == 0) 0 else c.correct * 100 / c.total
+                            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(c.name, color = p.ink, fontSize = 15.sp, fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f))
+                                    Text("${c.correct}/${c.total}", color = p.muted, fontSize = 13.5.sp)
                                 }
+                                ProgressBar(pct / 100f, if (c.answered == 0) p.hair else p.tone(pct))
                             }
                         }
+                    }
 
-                        SectionTitle("תרגולים ומבחנים", Modifier.padding(top = 8.dp))
-                        if (d.attempts.isEmpty()) Text("עוד לא סיים תרגול.", color = p.muted)
-                        else Panel(spacing = 0.dp) {
-                            d.attempts.take(30).forEachIndexed { i, a ->
-                                if (i > 0) Box(Modifier.fillMaxWidth().height(1.dp).background(p.hair))
-                                Row(Modifier.fillMaxWidth().padding(vertical = 12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                                    Column(Modifier.weight(1f)) {
-                                        Text(a.title, color = p.ink, fontSize = 15.sp, fontWeight = FontWeight.Medium)
-                                        Text(ago(a.at), color = p.muted, fontSize = 13.sp)
-                                    }
-                                    Text("${a.right}/${a.total}", color = p.muted, fontSize = 14.sp)
-                                    Pill("${a.pct}%", if (a.pct >= model.passMark) p.good else p.bad, if (a.pct >= model.passMark) p.goodSoft else p.badSoft)
+                    SectionTitle("תרגולים ומבחנים", Modifier.padding(top = 8.dp))
+                    if (d.attempts.isEmpty()) Text("עוד לא סיים תרגול.", color = p.muted)
+                    else Panel(spacing = 0.dp) {
+                        d.attempts.take(30).forEachIndexed { i, a ->
+                            if (i > 0) Box(Modifier.fillMaxWidth().height(1.dp).background(p.hair))
+                            Row(Modifier.fillMaxWidth().padding(vertical = 12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                Column(Modifier.weight(1f)) {
+                                    Text(a.title, color = p.ink, fontSize = 15.sp, fontWeight = FontWeight.Medium)
+                                    Text(ago(a.at), color = p.muted, fontSize = 13.sp)
                                 }
+                                Text("${a.right}/${a.total}", color = p.muted, fontSize = 14.sp)
+                                Pill("${a.pct}%", if (a.pct >= model.passMark) p.good else p.bad, if (a.pct >= model.passMark) p.goodSoft else p.badSoft)
                             }
                         }
                     }
                 }
-                BottomSpace(40.dp)
             }
-        }
     }
 }
 

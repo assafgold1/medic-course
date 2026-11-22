@@ -33,6 +33,9 @@ kotlin {
             implementation("io.ktor:ktor-client-content-negotiation:$ktor")
             implementation("io.ktor:ktor-serialization-kotlinx-json:$ktor")
             implementation("com.russhwolf:multiplatform-settings-no-arg:1.3.0")
+            implementation("dev.chrisbanes.haze:haze:2.1.0")
+            implementation("dev.chrisbanes.haze:haze-glass:2.1.0")
+            implementation("dev.chrisbanes.haze:haze-blur:2.1.0")
         }
         androidMain.dependencies {
             implementation("io.ktor:ktor-client-okhttp:$ktor")
