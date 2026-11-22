@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
@@ -185,16 +186,23 @@ fun QuizScreen(model: AppModel, nav: Nav, s: Screen.Quiz) {
                             }.padding(horizontal = 14.dp, vertical = 8.dp),
                     )
                 }
-                val chosen = picked
-                if (cfg.instant && chosen != null) {
-                    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(if (chosen == 0) p.goodSoft else p.badSoft).padding(18.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Text(if (chosen == 0) "נכון" else "לא נכון", color = if (chosen == 0) p.good else p.bad, fontWeight = FontWeight.ExtraBold, fontSize = 17.sp)
-                        Text(item.question.explanation, color = p.ink, fontSize = 15.5.sp, lineHeight = 24.sp)
-                    }
-                    if (diagram) AnswerImage(qImg!!)
-                    PrimaryButton(if (index + 1 < items.size) "השאלה הבאה" else "לתוצאות", Modifier.fillMaxWidth()) { next() }
+                if (cfg.instant && picked != null && diagram) AnswerImage(qImg!!)
+                VSpace(24.dp)
+            }
+        }
+        // The verdict and the next button stay pinned at the bottom, so they never need scrolling.
+        val chosen = picked
+        if (cfg.instant && chosen != null) {
+            Box(Modifier.fillMaxWidth().height(1.dp).background(p.hair))
+            Column(
+                Modifier.fillMaxWidth().background(p.surface).navigationBarsPadding().padding(horizontal = 20.dp, vertical = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(if (chosen == 0) p.goodSoft else p.badSoft).padding(horizontal = 16.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(if (chosen == 0) "נכון" else "לא נכון", color = if (chosen == 0) p.good else p.bad, fontWeight = FontWeight.ExtraBold, fontSize = 16.sp)
+                    Text(item.question.explanation, color = p.ink, fontSize = 15.sp, lineHeight = 22.sp)
                 }
-                VSpace(40.dp)
+                PrimaryButton(if (index + 1 < items.size) "השאלה הבאה" else "לתוצאות", Modifier.fillMaxWidth()) { next() }
             }
         }
     }
