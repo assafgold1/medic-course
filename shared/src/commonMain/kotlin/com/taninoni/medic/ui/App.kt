@@ -57,6 +57,7 @@ sealed interface Screen {
     data object Protocols : Screen
     data class ProtocolView(val id: String) : Screen
     data object Streak : Screen
+    data object Stickers : Screen
     data object Account : Screen
     data object Settings : Screen
     data object Instructor : Screen
@@ -158,6 +159,7 @@ fun App() {
                             Screen.Protocols -> ProtocolsScreen(model, nav)
                             is Screen.ProtocolView -> ProtocolScreen(model, nav, s.id)
                             Screen.Streak -> StreakScreen(model, nav)
+                            Screen.Stickers -> StickersScreen(model, nav)
                             Screen.Account -> AccountScreen(model, nav)
                             Screen.Settings -> SettingsScreen(model, nav)
                             Screen.Instructor -> InstructorScreen(model, nav)
@@ -171,6 +173,7 @@ fun App() {
                     ) { TabBar(nav) }
                     ImageViewerHost()
                     StreakOverlays(model, nav)
+                    GiftOverlay(model, nav)
                 }
                 if (splash) SplashScreen(ready = { model.content != null }) { splash = false }
             }

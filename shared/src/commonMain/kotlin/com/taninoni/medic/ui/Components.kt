@@ -86,17 +86,9 @@ fun PrimaryButton(text: String, modifier: Modifier = Modifier, enabled: Boolean 
         modifier.heightIn(min = 56.dp)
             .bouncy(enabled = enabled, onClick = onClick)
             .alpha(if (enabled) 1f else .45f)
-            .shadow(if (enabled) 18.dp else 0.dp, shape, ambientColor = p.bandA, spotColor = p.bandA)
+            .shadow(if (enabled) 10.dp else 0.dp, shape, ambientColor = Brand, spotColor = Brand)
             .clip(shape)
-            .background(p.band)
-            .drawBehind {
-                // Specular highlight: a bright lip at the top fading through the upper half.
-                drawRoundRect(
-                    Brush.verticalGradient(listOf(Color.White.copy(alpha = .38f), Color.White.copy(alpha = .06f), Color.Transparent), endY = size.height * .62f),
-                    cornerRadius = CornerRadius(size.height / 2),
-                )
-            }
-            .border(1.dp, Brush.verticalGradient(listOf(Color.White.copy(alpha = .65f), Color.White.copy(alpha = .08f))), shape)
+            .background(Brand)
             .padding(vertical = 15.dp, horizontal = 16.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
         verticalAlignment = Alignment.CenterVertically,
@@ -113,15 +105,16 @@ fun GhostButton(text: String, modifier: Modifier = Modifier, enabled: Boolean = 
     val src = remember { MutableInteractionSource() }
     Row(
         modifier.heightIn(min = 54.dp).alpha(if (enabled) 1f else .5f)
-            .softShadow(RoundedCornerShape(50), 10.dp, p.glassShadow)
-            .liquidGlass(RoundedCornerShape(50), interaction = src, frost = .75f)
-            .bouncy(enabled = enabled, interaction = src, pressedScale = 1f, onClick = onClick)
+            .bouncy(enabled = enabled, interaction = src, onClick = onClick)
+            .clip(RoundedCornerShape(50))
+            .background(if (p.dark) Brand.copy(alpha = .18f) else Brand.copy(alpha = .1f))
+            .border(1.5.dp, Brand.copy(alpha = if (p.dark) .5f else .35f), RoundedCornerShape(50))
             .padding(vertical = 13.dp, horizontal = 16.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (icon != null) Icon(icon, null, tint = if (enabled) p.blue else p.muted, modifier = Modifier.size(19.dp))
-        Text(text, color = if (enabled) p.blue else p.muted, fontWeight = FontWeight.Bold, fontSize = 16.sp, textAlign = TextAlign.Center, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Text(text, color = if (enabled) p.blue else p.muted, fontWeight = FontWeight.ExtraBold, fontSize = 16.sp, textAlign = TextAlign.Center, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
 
@@ -170,16 +163,15 @@ fun Segmented(options: List<Pair<String, String>>, selected: String, onSelect: (
     val p = Pal
     val found = options.indexOfFirst { it.first == selected }
     val index = found.coerceAtLeast(0)
-    BoxWithConstraints(Modifier.fillMaxWidth().glass(RoundedCornerShape(50), elevation = 0.dp).padding(4.dp)) {
+    BoxWithConstraints(Modifier.fillMaxWidth().clip(RoundedCornerShape(50)).background(if (p.dark) Color.White.copy(alpha = .07f) else Color.Black.copy(alpha = .05f)).padding(4.dp)) {
         val w = maxWidth / options.size
         val x by animateDpAsState(w * index, spring(dampingRatio = .72f, stiffness = 420f))
         // No thumb until something is chosen, so an unset value doesn't look like the first option.
         if (found >= 0) Box(
             Modifier.offset(x = x).width(w).heightIn(min = 44.dp).height(44.dp)
-                .softShadow(RoundedCornerShape(50), 8.dp, p.glassShadow)
+                .shadow(6.dp, RoundedCornerShape(50), ambientColor = Brand, spotColor = Brand)
                 .clip(RoundedCornerShape(50))
-                .background(if (p.dark) Color.White.copy(alpha = .16f) else Color.White)
-                .border(1.dp, Brush.verticalGradient(listOf(p.rimHi, p.rimLo)), RoundedCornerShape(50)),
+                .background(Brand),
         )
         Row(Modifier.fillMaxWidth()) {
             options.forEach { (key, label) ->
@@ -189,7 +181,7 @@ fun Segmented(options: List<Pair<String, String>>, selected: String, onSelect: (
                         .bouncy(label = label, pressedScale = .93f) { if (!on) tick(); onSelect(key) }.padding(horizontal = 4.dp),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text(label, color = if (on) p.blue else p.muted, fontWeight = if (on) FontWeight.ExtraBold else FontWeight.SemiBold, fontSize = 14.5.sp, textAlign = TextAlign.Center, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(label, color = if (on) Color.White else p.muted, fontWeight = if (on) FontWeight.ExtraBold else FontWeight.SemiBold, fontSize = 14.5.sp, textAlign = TextAlign.Center, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
             }
         }

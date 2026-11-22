@@ -107,16 +107,19 @@ val TOP_BAR = 58.dp
 /** "Reduce effects": no live blur, refraction or drifting light. For slower phones and to save battery. */
 val LocalReduceEffects = androidx.compose.runtime.compositionLocalOf { false }
 
-/** Plain translucent card used instead of real glass when effects are reduced. */
+/** The brand orange of the app mark: headers, the opening screen and big moments. */
+val Brand = Color(0xFFF26922)
+
+/** Card surface: solid white (graphite in the dark), a hairline edge and a soft shadow. No glass. */
 @Composable
 private fun Modifier.plainGlass(shape: Shape, tint: Color, elevation: Dp, rim: Boolean): Modifier {
     val p = Pal
-    val base = if (p.dark) Color(0xFF221D1C).copy(alpha = .92f) else Color.White.copy(alpha = .9f)
+    val base = if (p.dark) Color(0xFF1F1B1A) else Color.White
     return this
-        .then(if (elevation > 0.dp) Modifier.softShadow(shape, elevation, p.glassShadow) else Modifier)
+        .then(if (elevation > 0.dp) Modifier.softShadow(shape, (elevation.value * .6f).dp, p.glassShadow) else Modifier)
         .clip(shape)
         .background(tint.compositeOver(base))
-        .then(if (rim) Modifier.border(1.dp, if (p.dark) Color.White.copy(alpha = .1f) else Color.Black.copy(alpha = .06f), shape) else Modifier)
+        .then(if (rim) Modifier.border(1.dp, if (p.dark) Color.White.copy(alpha = .07f) else Color.Black.copy(alpha = .05f), shape) else Modifier)
 }
 
 /** Scroll position of the page in front, in px, so the backdrop light can drift behind it (parallax). */
@@ -124,58 +127,16 @@ object Parallax {
     var scroll by mutableFloatStateOf(0f)
 }
 
+/** The page background: one flat, quiet colour so the orange and the cards carry the design. */
 @Composable
 fun AmbientBackdrop(modifier: Modifier = Modifier) {
     val p = Pal
-    // Drift the light at a low tick rate: the blobs move a few pixels a second, so 12 updates a second look
-    // continuous, and every update re-renders all the glass sampling the backdrop.
-    var t by remember { mutableFloatStateOf(0f) }
-    val still = LocalReduceEffects.current
-    LaunchedEffect(still) {
-        if (still) return@LaunchedEffect
-        val start = withFrameMillis { it }
-        while (true) {
-            delay(83)
-            val now = withFrameMillis { it }
-            t = ((now - start) % 48_000L) / 48_000f
-        }
-    }
-    Canvas(modifier.fillMaxSize()) {
-        drawRect(Brush.verticalGradient(listOf(p.baseTop, p.baseBottom)))
-        val w = size.width
-        val h = size.height
-        val a = (t * 2 * PI).toFloat()
-        // Each blob orbits its own anchor at its own speed, so the light never repeats in an obvious way.
-        val specs = listOf(
-            floatArrayOf(.12f, .06f, .78f, 1f, 0f),
-            floatArrayOf(.95f, .24f, .70f, -1f, 1.7f),
-            floatArrayOf(.18f, .55f, .62f, 2f, 3.1f),
-            floatArrayOf(.88f, .74f, .66f, -1f, 4.4f),
-            floatArrayOf(.45f, .98f, .72f, 1f, 5.2f),
-        )
-        val alpha = if (p.dark) .5f else .55f
-        // The light sits further back than the page: it slides up at a fraction of the scroll speed.
-        val lift = -minOf(Parallax.scroll, 2400f) * .12f
-        specs.forEachIndexed { i, s ->
-            val ang = a * s[3] + s[4]
-            val cx = w * s[0] + cos(ang) * w * .16f
-            val cy = h * s[1] + sin(ang * 1.3f) * h * .08f + lift * (.6f + .2f * i)
-            val r = maxOf(w, h * .55f) * s[2] * (1f + .06f * sin(ang * 2f))
-            val c = p.blobs[i % p.blobs.size]
-            drawCircle(
-                Brush.radialGradient(listOf(c.copy(alpha = alpha), c.copy(alpha = alpha * .35f), Color.Transparent), Offset(cx, cy), r),
-                radius = r, center = Offset(cx, cy),
-            )
-        }
-    }
+    Canvas(modifier.fillMaxSize()) { drawRect(p.baseTop) }
 }
 
 /* ---------------- materials ---------------- */
 
-/**
- * The card material everywhere: deep frosted glass. A heavy real blur of the moving light behind,
- * a thin milky fill (with an optional [tint] on top), a specular sheen and a bright rim.
- */
+/** The card material everywhere: a flat surface with an optional [tint] on top. */
 fun Modifier.glass(
     shape: Shape = RoundedCornerShape(26.dp),
     tint: Color = Color.Unspecified,
@@ -216,6 +177,7 @@ fun Modifier.softShadow(shape: Shape, radius: Dp, color: Color): Modifier = this
  * page content for chrome that floats above it), bends it at the edges, and catches light on the rim.
  * Pass the clickable's [interaction] so the glass swells under the finger.
  */
+/** Small surface for round buttons, pills and fields: flat, with an optional [tint] or [fill] on top. */
 @Composable
 fun Modifier.liquidGlass(
     shape: RoundedCornerShape = CircleShape,
@@ -225,65 +187,21 @@ fun Modifier.liquidGlass(
     frost: Float = .5f,
     fill: Color? = null,
 ): Modifier {
-    if (LocalReduceEffects.current) return plainGlass(shape, if (fill != null) tint.compositeOver(fill) else tint, 0.dp, rim = true)
     val p = Pal
-    val haze = LocalHaze.current
-    val style = remember(shape, tint, p.dark, clear, frost, fill) {
-        (if (clear) GlassStyle.clear else GlassStyle.regular).then {
-            shape(shape)
-            tint(tint)
-            if (!clear) optics { copy(blurRadius = OpticalSizeValue.Fixed((6 + 22 * frost).dp)) }
-            if (p.dark) {
-                specularIntensity(.45f); edgeShadow(Color.Black.copy(alpha = .3f)); whitePoint(-.18f); contrast(.12f)
-                backgroundColor(Color(0xFF45403E).copy(alpha = .22f + .3f * frost))
-            } else {
-                specularIntensity(.75f); whitePoint(.25f); edgeShadow(Color(0x1E783214))
-                backgroundColor(Color.White.copy(alpha = .2f + .5f * frost))
-            }
-            // Tint sits over the refracted content (backgroundColor sits behind it), so a fill here keeps text legible.
-            // In the dark, a neutral graphite veil stops the glass from turning the colour of the light behind it.
-            val veil = if (p.dark) Color(0xFF2B2524).copy(alpha = .38f + .3f * frost) else null
-            val base = fill ?: veil
-            if (base != null) tint(tint.compositeOver(base))
-            pressed { scale(.96f); refractionMultiplier(1.6f); whitePointDelta(if (p.dark) .08f else .12f) }
-        }
-    }
-    return this.hazeGlass(HazeInput.Sources(haze), style, interactionSource = interaction)
+    val surface = if (p.dark) Color(0xFF2A2523) else Color.White
+    return plainGlass(shape, tint.compositeOver(fill?.takeIf { it.alpha > .6f } ?: surface), 0.dp, rim = true)
 }
 
 /**
  * Frosted chrome (tab bar, floating panels): a real backdrop blur of whatever scrolls behind, tinted so
  * text on top always reads, with a specular rim and a soft highlight across the top like a lens catching light.
  */
+/** Chrome surface (tab bar, docks): solid, with a stronger shadow so it floats over the page. */
 @Composable
-fun Modifier.frostedGlass(shape: RoundedCornerShape, tint: Color = Color.Transparent, radius: Dp = 26.dp): Modifier {
-    if (LocalReduceEffects.current) return plainGlass(shape, tint, 18.dp, rim = true)
-    val p = Pal
-    val haze = LocalHaze.current
-    val fill = tint.compositeOver(if (p.dark) Color(0xFF1D1A19).copy(alpha = .72f) else Color.White.copy(alpha = .62f))
-    val style = remember(fill, radius) {
-        HazeBlurStyle {
-            blurRadius(radius)
-            noiseFactor(.06f)
-            colorEffects(listOf(HazeColorEffect.tint(fill)))
-        }
-    }
-    return this
-        .softShadow(shape, 18.dp, p.glassShadow.copy(alpha = p.glassShadow.alpha * 1.3f))
-        .clip(shape)
-        .hazeBlur(HazeInput.Sources(haze), style)
-        .drawWithContent {
-            drawContent()
-            // Light from above: a bright lip that fades by mid-height.
-            drawRect(Brush.verticalGradient(listOf(Color.White.copy(alpha = if (p.dark) .14f else .5f), Color.Transparent), endY = size.height * .55f))
-        }
-        .border(1.dp, Brush.linearGradient(listOf(p.rimHi, p.rimLo, p.rimLo, p.rimHi.copy(alpha = p.rimHi.alpha * .6f))), shape)
-}
+fun Modifier.frostedGlass(shape: RoundedCornerShape, tint: Color = Color.Transparent, radius: Dp = 26.dp): Modifier =
+    plainGlass(shape, tint, 26.dp, rim = true)
 
-/**
- * Deep frosted glass for content cards: a heavy real blur of the moving light behind, a thin milky fill,
- * a specular sheen across the top and a bright rim. As the card scrolls, the colour under it shifts.
- */
+/** A raised card (bigger shadow), same flat surface. */
 @Composable
 fun Modifier.deepGlass(
     shape: Shape = RoundedCornerShape(30.dp),
@@ -293,29 +211,8 @@ fun Modifier.deepGlass(
 ): Modifier = frosted(shape, tint, elevation, radius, rim = true)
 
 @Composable
-private fun Modifier.frosted(shape: Shape, tint: Color, elevation: Dp, radius: Dp, rim: Boolean): Modifier {
-    if (LocalReduceEffects.current) return plainGlass(shape, tint, elevation, rim)
-    val p = Pal
-    val haze = LocalHaze.current
-    val fill = tint.compositeOver(if (p.dark) Color(0xFF141014).copy(alpha = .46f) else Color.White.copy(alpha = .42f))
-    val style = remember(fill, radius) {
-        HazeBlurStyle {
-            blurRadius(radius)
-            noiseFactor(.07f)
-            colorEffects(listOf(HazeColorEffect.tint(fill)))
-        }
-    }
-    return this
-        .then(if (elevation > 0.dp) Modifier.softShadow(shape, elevation, p.glassShadow) else Modifier)
-        .clip(shape)
-        .hazeBlur(HazeInput.Sources(haze), style)
-        .drawBehind {
-            // Light from above: a bright sheen fading out by mid-height, and a faint glow along the bottom edge.
-            drawRect(Brush.verticalGradient(listOf(Color.White.copy(alpha = if (p.dark) .13f else .5f), Color.Transparent), endY = size.height * .5f))
-            drawRect(Brush.verticalGradient(listOf(Color.Transparent, Color.White.copy(alpha = if (p.dark) .04f else .18f)), startY = size.height * .7f))
-        }
-        .then(if (rim) Modifier.border(1.dp, Brush.linearGradient(listOf(p.rimHi, p.rimLo, p.rimLo, p.rimHi.copy(alpha = p.rimHi.alpha * .7f))), shape) else Modifier)
-}
+private fun Modifier.frosted(shape: Shape, tint: Color, elevation: Dp, radius: Dp, rim: Boolean): Modifier =
+    plainGlass(shape, tint, elevation, rim)
 
 /* ---------------- motion ---------------- */
 
@@ -336,19 +233,20 @@ fun Modifier.bouncy(
 
 /* ---------------- chrome ---------------- */
 
-/** Round glass button for the top bar (back, close, actions). */
+/** Round button. [onBrand] makes it white-on-orange for the header; otherwise a flat surface disc. */
 @Composable
-fun GlassIconButton(icon: ImageVector, label: String, modifier: Modifier = Modifier, size: Dp = 46.dp, tint: Color = Pal.ink, onClick: () -> Unit) {
-    val src = remember { MutableInteractionSource() }
+fun GlassIconButton(icon: ImageVector, label: String, modifier: Modifier = Modifier, size: Dp = 46.dp, tint: Color = Pal.ink, onBrand: Boolean = false, onClick: () -> Unit) {
     Box(
-        modifier.size(size).liquidGlass(CircleShape, interaction = src).bouncy(label = label, interaction = src, pressedScale = 1f, onClick = onClick),
+        modifier.size(size)
+            .then(if (onBrand) Modifier.clip(CircleShape).background(Color.White.copy(alpha = .22f)) else Modifier.liquidGlass(CircleShape))
+            .bouncy(label = label, pressedScale = .9f, onClick = onClick),
         contentAlignment = Alignment.Center,
-    ) { Icon(icon, label, tint = tint, modifier = Modifier.size(size * .48f)) }
+    ) { Icon(icon, label, tint = if (onBrand) Color.White else tint, modifier = Modifier.size(size * .48f)) }
 }
 
 /**
- * The scroll-edge effect: content melts into a soft blur under the status bar instead of hitting a hard bar,
- * with round glass buttons floating on top and a compact title that fades in once the large title scrolls away.
+ * The top bar: white controls on the brand orange. Over a page's orange header it stays clear; once the
+ * header scrolls away ([collapsed] goes to 1) it fills with solid orange and shows the compact title.
  */
 @Composable
 fun BoxScope.GlassTopBar(
@@ -357,52 +255,50 @@ fun BoxScope.GlassTopBar(
     collapsed: Float,
     actions: @Composable () -> Unit = {},
 ) {
-    val p = Pal
-    val haze = LocalHaze.current
     val inset = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
-    val blurStyle = remember(p.dark) {
-        HazeBlurStyle {
-            blurRadius(22.dp)
-            noiseFactor(0f)
-            backgroundColor(p.baseTop)
-            progressive(HazeProgressive.verticalGradient(startIntensity = 1f, endIntensity = 0f))
-        }
-    }
     Box(
-        Modifier.align(Alignment.TopCenter).fillMaxWidth().height(inset + TOP_BAR + 10.dp)
-            .graphicsLayer { alpha = .35f + .65f * collapsed }
-            .hazeBlur(HazeInput.Sources(haze), blurStyle)
-            .drawWithContent {
-                drawContent()
-                drawRect(Brush.verticalGradient(listOf(p.baseTop.copy(alpha = .55f), p.baseTop.copy(alpha = 0f))))
-            },
+        Modifier.align(Alignment.TopCenter).fillMaxWidth().height(inset + TOP_BAR)
+            .graphicsLayer { alpha = collapsed }
+            .background(Brand),
     )
     Row(
         Modifier.align(Alignment.TopCenter).fillMaxWidth().windowInsetsPadding(WindowInsets.statusBars).height(TOP_BAR).padding(horizontal = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        if (onBack != null) GlassIconButton(Icons.back, "חזרה", onClick = onBack) else Spacer(Modifier.size(46.dp))
+        if (onBack != null) GlassIconButton(Icons.back, "חזרה", onBrand = true, onClick = onBack) else Spacer(Modifier.size(46.dp))
         Text(
             title, Modifier.weight(1f).graphicsLayer { alpha = collapsed; translationY = (1f - collapsed) * 10.dp.toPx() },
-            color = p.ink, fontSize = 17.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center,
+            color = Color.White, fontSize = 17.sp, fontWeight = FontWeight.ExtraBold, maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center,
         )
         Box(Modifier.widthIn(min = 46.dp), contentAlignment = Alignment.Center) { actions() }
     }
 }
 
-/** Large page title that scrolls with the content (the compact one in [GlassTopBar] takes over). */
+/** Large page title, white and heavy, set on the orange header block. */
 @Composable
 fun LargeTitle(title: String, subtitle: String? = null) {
-    val p = Pal
-    Column(Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 2.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        if (subtitle != null) Text(subtitle, color = p.blue, fontSize = 13.5.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-        Text(title, color = p.ink, fontSize = 32.sp, lineHeight = 38.sp, fontWeight = FontWeight.Black)
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        if (subtitle != null) Text(subtitle, color = Color.White.copy(alpha = .85f), fontSize = 14.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Text(title, color = Color.White, fontSize = 34.sp, lineHeight = 40.sp, fontWeight = FontWeight.Black)
+    }
+}
+
+/** Orange block at the top of a page, behind the status bar and top bar, with rounded bottom corners. */
+@Composable
+fun BrandHeader(modifier: Modifier = Modifier, bottom: Dp = 26.dp, content: @Composable ColumnScope.() -> Unit) {
+    val inset = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+    Box(
+        modifier.fillMaxWidth().clip(RoundedCornerShape(bottomStart = 32.dp, bottomEnd = 32.dp)).background(Brand)
+            .padding(top = inset + TOP_BAR, bottom = bottom),
+        contentAlignment = Alignment.TopCenter,
+    ) {
+        Column(Modifier.widthIn(max = 720.dp).fillMaxWidth().padding(horizontal = 22.dp), content = content)
     }
 }
 
 /**
- * A page: content scrolls under a floating glass top bar, over the ambient backdrop.
+ * A page: an orange header with the large title, content scrolling below, and the top bar on top.
  * [bottom] floats over the end of the page (a pinned action), with [bottomSpace] kept clear below the content.
  */
 @Composable
@@ -417,28 +313,21 @@ fun GlassPage(
     bottom: (@Composable BoxScope.() -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    val haze = LocalHaze.current
-    val collapsed by remember(showLargeTitle) { derivedStateOf { if (!showLargeTitle) 1f else (scroll.value / 90f).coerceIn(0f, 1f) } }
-    LaunchedEffect(scroll) { snapshotFlow { scroll.value.toFloat() }.collect { Parallax.scroll = it } }
-    DisposableEffect(Unit) { onDispose { Parallax.scroll = 0f } }
+    val collapsed by remember(showLargeTitle) { derivedStateOf { if (!showLargeTitle) 1f else (scroll.value / 110f).coerceIn(0f, 1f) } }
     Box(Modifier.fillMaxSize()) {
         Column(
-            Modifier.fillMaxSize().hazeSource(haze, zIndex = 1f).verticalScroll(scroll)
-                .windowInsetsPadding(WindowInsets.statusBars).padding(top = TOP_BAR),
+            Modifier.fillMaxSize().verticalScroll(scroll),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
+            if (showLargeTitle) BrandHeader {
+                Box(Modifier.graphicsLayer { val v = scroll.value.toFloat(); translationY = v * .35f; alpha = 1f - (v / 140f).coerceIn(0f, 1f) }) {
+                    LargeTitle(title, subtitle)
+                }
+            } else BrandHeader(bottom = 8.dp) {}
             Column(
-                Modifier.widthIn(max = 720.dp).fillMaxWidth().padding(horizontal = 18.dp),
+                Modifier.widthIn(max = 720.dp).fillMaxWidth().padding(horizontal = 18.dp).padding(top = 18.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
-                if (showLargeTitle) Box(
-                    Modifier.graphicsLayer {
-                        // The large title lags behind the content and fades as the compact one takes over.
-                        val v = scroll.value.toFloat()
-                        translationY = v * .4f
-                        alpha = 1f - (v / 160f).coerceIn(0f, 1f)
-                    },
-                ) { LargeTitle(title, subtitle) } else Spacer(Modifier.height(6.dp))
                 content()
                 BottomSpace(24.dp + bottomSpace)
             }
@@ -448,7 +337,7 @@ fun GlassPage(
     }
 }
 
-/** [GlassPage] for long lists. Items get the side padding from [contentPadding]. */
+/** [GlassPage] for long lists: a solid orange top bar, items get the side padding from [pageItem]. */
 @Composable
 fun GlassLazyPage(
     title: String,
@@ -458,20 +347,16 @@ fun GlassLazyPage(
     showTopTitle: Boolean = true,
     content: LazyListScope.() -> Unit,
 ) {
-    val haze = LocalHaze.current
-    val collapsed by remember { derivedStateOf { if (state.firstVisibleItemIndex > 0) 1f else (state.firstVisibleItemScrollOffset / 140f).coerceIn(0f, 1f) } }
-    LaunchedEffect(state) { snapshotFlow { state.firstVisibleItemIndex * 600f + state.firstVisibleItemScrollOffset }.collect { Parallax.scroll = it } }
-    DisposableEffect(Unit) { onDispose { Parallax.scroll = 0f } }
     val top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     Box(Modifier.fillMaxSize()) {
         LazyColumn(
-            Modifier.fillMaxSize().hazeSource(haze, zIndex = 1f),
+            Modifier.fillMaxSize(),
             state = state,
             contentPadding = PaddingValues(top = top + TOP_BAR),
             horizontalAlignment = Alignment.CenterHorizontally,
             content = content,
         )
-        GlassTopBar(if (showTopTitle) title else "", onBack, collapsed, actions)
+        GlassTopBar(if (showTopTitle) title else "", onBack, 1f, actions)
     }
 }
 

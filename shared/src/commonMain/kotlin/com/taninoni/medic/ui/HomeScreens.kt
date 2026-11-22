@@ -87,20 +87,26 @@ fun HomeScreen(model: AppModel, nav: Nav) {
     GlassLazyPage("מסלול חובש", null, state = listState, showTopTitle = false) {
         if (searching) item { Spacer(Modifier.height(10.dp)) }
         if (!searching) item {
-            Row(
-                Modifier.pageItem().padding(top = 18.dp, bottom = 22.dp)
-                    .graphicsLayer {
-                        val k = (headerScroll / 260f).coerceIn(0f, 1f)
-                        translationY = headerScroll * .45f
-                        alpha = 1f - k
-                        scaleX = 1f - .06f * k; scaleY = 1f - .06f * k
-                    },
-                verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp),
+            // The orange block continues from the top bar, like the opening screen.
+            Box(
+                Modifier.fillMaxWidth().padding(bottom = 18.dp)
+                    .clip(RoundedCornerShape(bottomStart = 34.dp, bottomEnd = 34.dp)).background(Brand)
+                    .padding(top = 10.dp, bottom = 26.dp),
+                contentAlignment = Alignment.TopCenter,
             ) {
-                Box(Modifier.size(66.dp).liquidGlass(CircleShape), contentAlignment = Alignment.Center) { Logo(48.dp) }
-                Column(Modifier.weight(1f)) {
-                    Text(if (firstName.isNotEmpty()) "שלום, $firstName" else "שלום", color = p.blue, fontSize = 15.sp, fontWeight = FontWeight.ExtraBold)
-                    Text("מסלול חובש", color = p.ink, fontSize = 38.sp, lineHeight = 42.sp, fontWeight = FontWeight.Black)
+                Row(
+                    Modifier.pageItem().padding(horizontal = 4.dp).graphicsLayer {
+                        val k = (headerScroll / 220f).coerceIn(0f, 1f)
+                        translationY = headerScroll * .4f
+                        alpha = 1f - k
+                    },
+                    verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp),
+                ) {
+                    Column(Modifier.weight(1f)) {
+                        Text(if (firstName.isNotEmpty()) "שלום, $firstName" else "שלום", color = Color.White.copy(alpha = .88f), fontSize = 16.sp, fontWeight = FontWeight.ExtraBold)
+                        Text("מסלול חובש", color = Color.White, fontSize = 40.sp, lineHeight = 44.sp, fontWeight = FontWeight.Black)
+                    }
+                    BrandMark(64.dp)
                 }
             }
         }
@@ -114,6 +120,9 @@ fun HomeScreen(model: AppModel, nav: Nav) {
         }
         if (!searching) item {
             StreakCard(model, Modifier.pageItem().padding(bottom = 16.dp).rise(0, entered)) { nav.go(Screen.Streak) }
+        }
+        if (!searching) item {
+            CollectionCard(model, Modifier.pageItem().padding(bottom = 16.dp).rise(1, entered)) { nav.go(Screen.Stickers) }
         }
         if (!searching) item {
             HeroCard(model, nav, overall, right, all.size, Modifier.pageItem().rise(1, entered))
@@ -482,5 +491,22 @@ private fun Modifier.rise(index: Int, entered: Boolean): Modifier = composed {
         translationY = (1f - v) * 60.dp.toPx()
         val sc = .94f + .06f * v
         scaleX = sc; scaleY = sc
+    }
+}
+
+/** The app mark drawn flat: a white cross with the orange heartbeat across it, as on the opening screen. */
+@Composable
+fun BrandMark(size: androidx.compose.ui.unit.Dp, modifier: Modifier = Modifier) {
+    androidx.compose.foundation.Canvas(modifier.size(size)) {
+        val s = this.size.minDimension
+        val thick = s * .34f
+        val c = center
+        val corner = androidx.compose.ui.geometry.CornerRadius(thick * .22f)
+        drawRoundRect(Color.White, androidx.compose.ui.geometry.Offset(c.x - thick / 2, c.y - s / 2), androidx.compose.ui.geometry.Size(thick, s), corner)
+        drawRoundRect(Color.White, androidx.compose.ui.geometry.Offset(c.x - s / 2, c.y - thick / 2), androidx.compose.ui.geometry.Size(s, thick), corner)
+        val a = thick * .36f
+        val pts = listOf(.07f to 0f, .33f to 0f, .41f to -.55f, .50f to 1f, .58f to -.25f, .64f to 0f, .93f to 0f)
+        val path = androidx.compose.ui.graphics.Path().apply { pts.forEachIndexed { i, (x, dy) -> val px = c.x - s / 2 + s * x; val py = c.y + a * dy; if (i == 0) moveTo(px, py) else lineTo(px, py) } }
+        drawPath(path, Brand, style = androidx.compose.ui.graphics.drawscope.Stroke(s * .055f, cap = androidx.compose.ui.graphics.StrokeCap.Round, join = androidx.compose.ui.graphics.StrokeJoin.Round))
     }
 }

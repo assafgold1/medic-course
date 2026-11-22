@@ -161,6 +161,10 @@ class AppModel(private val scope: CoroutineScope) {
         val earned = streak % 7 == 0 && freezes < MAX_FREEZES
         if (earned) { freezes++; settings.putInt(K_FREEZES, freezes) }
         celebration = Celebration(streak, earned, record && streak > 1)
+        // Every day the goal is met: a gift. First goal ever and streak milestones bring special stickers too.
+        if (metDays.size == 1) giveSpecial("rookie")
+        if (streak >= 7) giveSpecial("fire")
+        if (streak >= 30) giveSpecial("king")
         scheduleReminders()
     }
 
@@ -170,10 +174,74 @@ class AppModel(private val scope: CoroutineScope) {
         saveDays(K_MET, metDays); saveDays(K_FROZEN, frozenDays)
         settings.putInt(K_FREEZES, 0); settings.putInt(K_LONGEST, 0); settings.putInt(K_TODAY_COUNT, 0)
         celebration = null; streakNotice = null
+        stickers = emptyMap(); stickerOrder = emptyList(); pendingGifts = emptyList(); saveStickers()
         scheduleReminders()
     }
 
     fun dismissCelebration() { celebration = null }
+
+    /* ---------- sticker collection ---------- */
+
+    /** Sticker id -> how many the user has. */
+    var stickers by mutableStateOf(readStickers()); private set
+    /** Stickers in the order they were collected (latest last), for the home card. */
+    var stickerOrder by mutableStateOf(settings.getStringOrNull(K_STICKER_ORDER)?.split(',')?.filter { it.isNotBlank() }.orEmpty()); private set
+    /** Gifts waiting to be opened; each already holds the sticker inside. */
+    var pendingGifts by mutableStateOf(settings.getStringOrNull(K_GIFTS)?.split(',')?.filter { it.isNotBlank() }.orEmpty()); private set
+
+    private fun readStickers(): Map<String, Int> =
+        // "id:count", where topic ids themselves contain a colon ("t:neuro:2"): the count is after the last one.
+        settings.getStringOrNull(K_STICKERS)?.split(',')?.mapNotNull { e ->
+            val i = e.lastIndexOf(':')
+            if (i <= 0) null else e.substring(0, i) to (e.substring(i + 1).toIntOrNull() ?: 1)
+        }?.toMap().orEmpty()
+
+    private fun saveStickers() {
+        settings.putString(K_STICKERS, stickers.entries.joinToString(",") { "${it.key}:${it.value}" })
+        settings.putString(K_STICKER_ORDER, stickerOrder.takeLast(60).joinToString(","))
+        settings.putString(K_GIFTS, pendingGifts.joinToString(","))
+    }
+
+    /** Every sticker there is: one per topic, then the specials. */
+    private var bookFor: Content? = null
+    private var bookCache: List<StickerDef> = emptyList()
+    val stickerBook: List<StickerDef>
+        get() {
+            val c = content
+            if (c !== bookFor) { bookCache = StickerBook.build(c?.topics.orEmpty()); bookFor = c }
+            return bookCache
+        }
+    fun sticker(id: String) = stickerBook.firstOrNull { it.id == id }
+
+    /** Queues a gift holding sticker [id]. */
+    private fun giveGift(id: String) {
+        pendingGifts = pendingGifts + id
+        saveStickers()
+    }
+
+    /** A topic's sticker is earned at 80% on it: across enough of its questions, or in one run of at least 5. */
+    private fun checkTopicSticker(topicId: String, runRight: Int = 0, runTotal: Int = 0) {
+        val id = "t:$topicId"
+        if (id in stickers || id in pendingGifts) return
+        val items = allItems.filter { it.topic.id == topicId }
+        if (items.isEmpty()) return
+        val answered = items.count { isAnswered(it.id) }
+        val byMastery = answered >= maxOf(5, items.size / 2) && mastery(items.filter { isAnswered(it.id) }) >= 80
+        val byRun = runTotal >= 5 && runRight * 100 / runTotal >= 80
+        if (byMastery || byRun) giveGift(id)
+    }
+
+    /** Opens the next gift: its sticker joins the collection. Returns the sticker id. */
+    fun openGift(): String? {
+        val id = pendingGifts.firstOrNull() ?: return null
+        pendingGifts = pendingGifts.drop(1)
+        stickers = stickers + (id to (stickers[id] ?: 0) + 1)
+        stickerOrder = stickerOrder.filter { it != id } + id
+        saveStickers()
+        return id
+    }
+
+    private fun giveSpecial(id: String) { if (id !in stickers && id !in pendingGifts) giveGift(id) }
     fun dismissStreakNotice() { streakNotice = null }
 
     fun setGoal(goal: Int) {
@@ -272,6 +340,7 @@ class AppModel(private val scope: CoroutineScope) {
         progress = progress.copy(answers = progress.answers + (id to Answer(if (correct) 1 else 0, nowMillis())), updatedAt = nowMillis())
         saveProgress()
         countAnswerToday()
+        allItems.firstOrNull { it.id == id }?.let { checkTopicSticker(it.topic.id) }
     }
 
     fun isBookmarked(id: String) = id in bookmarks
@@ -301,6 +370,8 @@ class AppModel(private val scope: CoroutineScope) {
         )
         progress = progress.copy(attempts = (listOf(attempt) + progress.attempts).take(100), updatedAt = nowMillis())
         saveProgress()
+        if (kind == "exam" && attempt.pct >= passMark) giveSpecial("medal")
+        log.groupBy { it.item.topic.id }.forEach { (topicId, l) -> checkTopicSticker(topicId, l.count { it.ok }, l.size) }
         scope.launch { sync() }
     }
 
@@ -499,6 +570,9 @@ class AppModel(private val scope: CoroutineScope) {
         const val K_INSTANT = "instant_feedback"
         const val K_SOUND = "sound"
         const val K_HAPTICS = "haptics"
+        const val K_STICKERS = "stickers"
+        const val K_STICKER_ORDER = "sticker_order"
+        const val K_GIFTS = "pending_gifts"
         const val K_REDUCE = "reduce_effects"
         const val K_BOOKMARKS = "bookmarks"
         const val K_BLITZ_BEST = "blitz_best"

@@ -77,16 +77,13 @@ fun TabBar(nav: Nav, modifier: Modifier = Modifier) {
         Box(
             Modifier.padding(6.dp).offset(x = x).width(w).fillMaxHeight()
                 .graphicsLayer { scaleX = sx; scaleY = 1f / (1f + (sx - 1f) * .4f) }
-                .softShadow(shape, 8.dp, p.glassShadow)
                 .clip(shape)
-                .background(Brush.verticalGradient(listOf(Color.White.copy(alpha = if (p.dark) .2f else .85f), Color.White.copy(alpha = if (p.dark) .08f else .45f))))
-                .background(p.blue.copy(alpha = if (p.dark) .16f else .1f))
-                .border(1.dp, Brush.verticalGradient(listOf(p.rimHi, p.rimLo)), shape),
+                .background(Brand),
         )
         Row(Modifier.padding(6.dp).fillMaxWidth().fillMaxHeight()) {
             TABS.forEachIndexed { i, tab ->
                 val on = i == index
-                val tint by animateColorAsState(if (on) p.blue else p.ink.copy(alpha = .62f))
+                val tint by animateColorAsState(if (on) Color.White else p.ink.copy(alpha = .62f))
                 val lift by animateFloatAsState(if (on) 1.08f else 1f, spring(dampingRatio = .45f, stiffness = 500f))
                 Column(
                     Modifier.weight(1f).fillMaxHeight().bouncy(label = tab.label, interaction = src, pressedScale = .9f) { if (!on) tick(); nav.tab(tab.screen) },

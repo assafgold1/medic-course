@@ -48,7 +48,7 @@ private val Light = Palette(
     good = Color(0xFF14A05A), goodSoft = Color(0x1F14A05A), mid = Color(0xFFD98700), midSoft = Color(0x1FD98700),
     bad = Color(0xFFE5484D), badSoft = Color(0x1FE5484D),
     solid = Color(0xFFFFFCFA),
-    baseTop = Color(0xFFFFF5EE), baseBottom = Color(0xFFFFEEF0),
+    baseTop = Color(0xFFF6F2EF), baseBottom = Color(0xFFF6F2EF),
     // Vivid warm light, one family from amber to magenta, so the frosted glass always reads as one material.
     blobs = listOf(Color(0xFFFF7A1F), Color(0xFFFF3D6E), Color(0xFFFFB238), Color(0xFFE23C8F), Color(0xFFFF5A36)),
     glassTop = Color(0xD9FFFFFF), glassBottom = Color(0xB3FFFFFF), rimHi = Color(0xFFFFFFFF), rimLo = Color(0x40FFFFFF),
@@ -62,7 +62,7 @@ private val Dark = Palette(
     good = Color(0xFF3DD68C), goodSoft = Color(0x263DD68C), mid = Color(0xFFFFB547), midSoft = Color(0x26FFB547),
     bad = Color(0xFFFF6369), badSoft = Color(0x2BFF6369),
     solid = Color(0xFF1A1513),
-    baseTop = Color(0xFF0B0808), baseBottom = Color(0xFF0D070B),
+    baseTop = Color(0xFF121010), baseBottom = Color(0xFF121010),
     blobs = listOf(Color(0xFFE5550F), Color(0xFFD0245C), Color(0xFFC77A00), Color(0xFF9B1F6E), Color(0xFFFF5A1F)),
     glassTop = Color(0x21FFFFFF), glassBottom = Color(0x0FFFFFFF), rimHi = Color(0x52FFFFFF), rimLo = Color(0x0DFFFFFF),
     glassShadow = Color(0x4D000000),

@@ -32,6 +32,7 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
@@ -186,7 +187,7 @@ private fun DayBubble(met: Boolean, frozen: Boolean, isToday: Boolean, future: B
     Box(Modifier.size(size), contentAlignment = Alignment.Center) {
         // The empty slot sits underneath, so a revealed day pops out of it.
         Box(
-            Modifier.size(size).liquidGlass(CircleShape, clear = true)
+            Modifier.size(size).clip(CircleShape).background(if (future) p.hair.copy(alpha = p.hair.alpha * .6f) else p.hair)
                 .then(if (isToday) Modifier.border(2.dp, p.blue, CircleShape) else Modifier),
         )
         if (met || frozen) Box(
@@ -524,7 +525,7 @@ private fun CelebrationView(model: AppModel, c: Celebration) {
     }
     Box(
         Modifier.fillMaxSize()
-            .background(Brush.verticalGradient(listOf(p.baseTop, p.baseBottom)))
+            .background(Brand)
             .clickable(remember { MutableInteractionSource() }, indication = null) {},
     ) {
         Embers(Modifier.fillMaxSize())
@@ -543,12 +544,11 @@ private fun CelebrationView(model: AppModel, c: Celebration) {
                 label = "streak",
             ) { n ->
                 Text(
-                    "$n", fontSize = 84.sp, lineHeight = 88.sp, fontWeight = FontWeight.Black,
-                    style = TextStyle(brush = Brush.verticalGradient(listOf(p.bandA, p.bandB))),
+                    "$n", fontSize = 96.sp, lineHeight = 100.sp, fontWeight = FontWeight.Black, color = Color.White,
                 )
             }
-            Text(if (c.streak == 1) "הרצף התחיל!" else "ימים ברצף!", color = p.ink, fontSize = 28.sp, fontWeight = FontWeight.Black)
-            Text(message, color = p.muted, fontSize = 16.sp, lineHeight = 23.sp, textAlign = TextAlign.Center)
+            Text(if (c.streak == 1) "הרצף התחיל!" else "ימים ברצף!", color = Color.White, fontSize = 30.sp, fontWeight = FontWeight.Black)
+            Text(message, color = Color.White.copy(alpha = .88f), fontSize = 16.sp, lineHeight = 23.sp, textAlign = TextAlign.Center, fontWeight = FontWeight.SemiBold)
             Box(Modifier.widthIn(max = 420.dp).fillMaxWidth().glass(RoundedCornerShape(26.dp), elevation = 8.dp).padding(16.dp)) {
                 WeekStrip(model, revealToday = true)
             }
@@ -574,7 +574,12 @@ private fun CelebrationView(model: AppModel, c: Celebration) {
                 )
             }
         }
-            PrimaryButton("המשך", Modifier.padding(horizontal = 24.dp, vertical = 12.dp).widthIn(max = 420.dp).fillMaxWidth()) { model.dismissCelebration() }
+            // White button on the orange, like the opening screen's colours reversed.
+            Box(
+                Modifier.padding(horizontal = 24.dp, vertical = 12.dp).widthIn(max = 420.dp).fillMaxWidth().heightIn(min = 58.dp)
+                    .bouncy { model.dismissCelebration() }.clip(RoundedCornerShape(50)).background(Color.White),
+                contentAlignment = Alignment.Center,
+            ) { Text("המשך", color = Brand, fontSize = 18.sp, fontWeight = FontWeight.Black) }
         }
     }
 }

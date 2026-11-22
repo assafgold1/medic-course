@@ -10,7 +10,8 @@ import com.taninoni.medic.ui.AppBack
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
-        enableEdgeToEdge()
+        // Every screen starts with the orange brand header, so status bar icons are always light.
+        enableEdgeToEdge(statusBarStyle = androidx.activity.SystemBarStyle.dark(android.graphics.Color.TRANSPARENT))
         super.onCreate(savedInstanceState)
         AndroidContext.app = applicationContext
         AndroidContext.activity = this

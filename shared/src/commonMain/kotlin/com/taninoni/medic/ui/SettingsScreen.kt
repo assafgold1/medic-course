@@ -111,8 +111,6 @@ fun SettingsScreen(model: AppModel, nav: Nav) {
                 model.updateTextScale(TEXT_STEPS[it.toInt()])
             }
             Text("דוגמה: מה הקצב המומלץ לעיסויים במבוגר?", color = p.ink, fontSize = 16.sp, lineHeight = 23.sp, modifier = Modifier.padding(horizontal = 4.dp))
-            Divider()
-            ToggleRow(Icons.half, "הפחתת אפקטים", "בלי טשטוש ותנועה ברקע. לטלפונים איטיים ולחיסכון בסוללה", model.reduceEffects) { model.updateReduceEffects(it) }
         }
 
         Group("תרגול ומבחן") {
