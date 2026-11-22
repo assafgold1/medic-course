@@ -139,6 +139,7 @@ h3{font-size:18px}
 
 .qimg{display:block;width:100%;border:0;padding:0;margin:4px 0 6px;border-radius:20px;overflow:hidden;background:var(--paper);cursor:zoom-in;text-align:right;font:inherit}
 .qimg img{display:block;width:100%;height:200px;object-fit:contain;background:#fff}
+.qdiag{margin-top:12px}.qdiag img{height:auto}
 .qimg .cap{display:block;padding:10px 14px;color:var(--muted);font-size:13.5px;line-height:1.45}
 .login{position:fixed;inset:0;z-index:90;background:var(--surface);overflow:auto;display:flex;justify-content:center;padding:max(28px,env(safe-area-inset-top)) 20px 40px}
 .login .box{width:100%;max-width:440px;display:flex;flex-direction:column;align-items:center;gap:14px;text-align:center}
@@ -530,7 +531,7 @@ const TOPICS = [
     ['דרך מה מגיע הדם לעלייה שמאל?',['ורידי הריאה','הווריד הנבוב','עורק הריאה','העורקים הכליליים'],'הדם המחומצן חוזר מהריאות.'],
     ['מה מספק דם לשריר הלב?',['העורקים הכליליים','הווריד הנבוב','עורק הריאה','הדם שבחדרים'],'שלושה עורקים כליליים מרכזיים.'],
     ['היכן ממוקם ה-SA Node?',['בחלק העליון של עלייה ימין','בחדר שמאל','בין החדרים','באאורטה'],'הוא הקוצב הראשי, 60–100 בדקה.'],
-    ['מה החיסרון ביכולת של כל תאי הלב לייצר אות חשמלי?',['עוררות יתר לא מסונכרנת: פרפור','הלב נעצר','הקצב תמיד איטי','אין חיסרון'],'היתרון: הלב ממשיך לפעום גם בלי הקוצב הראשי.'],
+    ['מה החיסרון ביכולת של כל תאי הלב לייצר אות חשמלי?',['עוררות יתר לא מסונכרנת: פרפור','הלב נעצר','הקצב תמיד איטי','אין חיסרון'],'אם הרבה תאים יורים בבת אחת, בלי תיאום, השריר רוטט במקום להתכווץ: פרפור. (היתרון: הלב ממשיך לפעום גם בלי הקוצב הראשי.)'],
     ['במה מתאפיין וריד?',['שכבה אמצעית דקה ומסתמים חד-כיווניים','זרימה גלית חזקה','שכבה אחת חדירה','דם תמיד עשיר בחמצן'],'עורקים חזקים וגמישים עם זרימה גלית.'],
     ['היכן מתרחש חילוף החומרים עם התאים?',['בנימים','בעורקים','בוורידים','בלב'],'הנימים בעלי שכבה אחת חדירה למחצה.'],
     ['מה אחוז הפלסמה בדם?',['כ-55%','כ-10%','כ-90%','כ-25%'],'כ-45% הם כדוריות אדומות, וכ-1% לבנות וטסיות.'],
@@ -963,7 +964,7 @@ const TOPICS = [
       '"חפש כדי למצוא": כדי למצוא משהו צריך לחשוד בקיומו. מעריכים בגישה חשדנית ומטפלים לפי התרחיש הגרוע ביותר.']}
   ],
   quiz:[
-    ['מה היתרון של עבודה לפי פרוטוקול?',['סדר פעולות ידוע מוריד את הלחץ','הוא מכסה כל אפשרות','אין צורך לחשוב','הוא מקצר את הפינוי'],'המגבלה: אי אפשר לקחת בחשבון את כל האפשרויות.'],
+    ['מה היתרון של עבודה לפי פרוטוקול?',['סדר פעולות ידוע מוריד את הלחץ','הוא מכסה כל אפשרות','אין צורך לחשוב','הוא מקצר את הפינוי'],'כשהסדר ידוע מראש, לא צריך להמציא אותו תחת לחץ, וקל לא לשכוח שלבים. (המגבלה: פרוטוקול לא מכסה כל אפשרות.)'],
     ['מה ההשפעה השלילית של אדרנלין על קבלת החלטות?',['"שליפה" במקום תכנון וירידה בריכוז','הגוף דרוך','שיפור הזיכרון','האטת הדופק'],'ההשפעה החיובית: הגוף דרוך ומוכן.'],
     ['איך מתכוננים לקבלת החלטות תחת לחץ?',['אימון ותרגול שמייצרים אוטומטיות','קריאת ספרים בלבד','הימנעות מאירועים','שתיית קפה'],'מה שתרגלת הופך לתגובה אוטומטית.'],
     ['מה נכון לגבי מקרים מסכני חיים אמיתיים?',['הם מעטים, ואפשר לקטלג אותם לפרוטוקול','הם רוב המקרים','אין להם פרוטוקול','הם לא דורשים החלטות'],'רוב המקרים דורשים החלטות מינימליות.'],
@@ -3611,10 +3612,13 @@ function startQuiz(qs, opt){
     const rawImg = qImg(it.id);
     const img = rawImg && rawImg !== lastImg ? rawImg : null;
     lastImg = img;
+    // Text diagrams are unreadable in the strip and give the answer away: show them after answering.
+    const diagram = img && /--(gfx|proto)-/.test(img);
+    it._diagram = diagram ? img : null;
     box.innerHTML = `
       <div class="qhead"><span>שאלה <span class="mono">${i+1}/${items.length}</span>${opt.instant && streak>=2 ? ` · <b style="color:var(--mid)">רצף ${streak} 🔥</b>`:''}</span>${left?`<span class="qclock${left<=60?' low':''}">${clock()}</span>`:''}</div>
       ${barHTML(Math.round(i/items.length*100)).replace(/class="(good|mid|low)"/,'style="background:var(--blue)" class=""')}
-      ${img?`<button class="qimg" data-q="${it.id}"><img src="images/${img}" alt=""><span class="cap" hidden></span></button>`:''}
+      ${img&&!diagram?`<button class="qimg" data-q="${it.id}"><img src="images/${img}" alt=""><span class="cap" hidden></span></button>`:''}
       <p class="qtext">${it.q}</p>
       <div class="opts">${it.order.map((o,k)=>`<button class="opt" data-o="${o}"><span class="k">${LETTERS[k]}</span><span>${it.opts[o]}</span></button>`).join('')}</div>
       <div id="after"></div>`;
@@ -3636,8 +3640,11 @@ function startQuiz(qs, opt){
     const cap = box.querySelector('.qimg .cap');
     if (opt.instant && cap){ cap.textContent = qCap(it.id); cap.hidden = !cap.textContent }
     if (opt.instant){
+      const dg = it._diagram;
       after.innerHTML = `<div class="explain"><b class="${ok?'good':'low'}">${ok?'נכון':'לא נכון'}</b>${it.e}</div>
+        ${dg?`<button class="qimg qdiag"><img src="images/${dg}" alt=""><span class="cap">${qCap(it.id)}</span></button>`:''}
         <div class="cta"><button class="btn wide" id="next">${i+1<items.length?'השאלה הבאה':'לתוצאות'}</button></div>`;
+      const qd=after.querySelector('.qdiag'); if (qd) qd.onclick=()=>openViewer([[dg, qCap(it.id)]],0);
       const n=after.querySelector('#next'); n.focus({preventScroll:true}); n.onclick=()=>{i++;draw()};
     } else setTimeout(()=>{i++;draw()}, 380);
   }

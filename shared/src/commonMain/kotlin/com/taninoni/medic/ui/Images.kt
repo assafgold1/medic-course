@@ -61,7 +61,10 @@ private val bitmapCache = mutableMapOf<String, ImageBitmap>()
 @OptIn(ExperimentalResourceApi::class)
 @Composable
 private fun rememberTopicBitmap(file: String): ImageBitmap? {
+    // produceState keeps its state across key changes, so reset it here; otherwise a reused
+    // slot (the next quiz question) keeps showing the previous picture.
     val bitmap by produceState(bitmapCache[file], file) {
+        value = bitmapCache[file]
         if (value == null) value = withContext(Dispatchers.Default) {
             runCatching { Res.readBytes("files/images/$file").decodeToImageBitmap() }.getOrNull()
                 // Images added after this build come from the server (the site serves the same files).
@@ -189,6 +192,20 @@ fun QuestionImage(img: TopicImage, showCaption: Boolean) {
     Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(p.paper).clickable { ViewerState.show(listOf(if (showCaption) img else img.copy(caption = "")), 0) }) {
         TopicBitmap(img.file, Modifier.fillMaxWidth().height(150.dp).background(Color.White), ContentScale.Fit)
         if (showCaption) Text(img.caption, color = p.muted, fontSize = 13.5.sp, lineHeight = 19.sp, modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp))
+    }
+}
+
+/** A summary diagram shown after answering: full width at its own proportions, tap to zoom. */
+@Composable
+fun AnswerImage(img: TopicImage) {
+    val p = Pal
+    val bitmap = rememberTopicBitmapPublic(img.file)
+    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(p.paper).clickable { ViewerState.show(listOf(img), 0) }) {
+        val ratio = bitmap?.let { frameRatio(it, img.file) } ?: 1.2f
+        Box(Modifier.fillMaxWidth().aspectRatio(ratio).background(Color.White)) {
+            if (bitmap != null) BitmapView(bitmap, img.file, Modifier.fillMaxSize(), ContentScale.Fit)
+        }
+        if (img.caption.isNotEmpty()) Text(img.caption, color = p.muted, fontSize = 13.5.sp, lineHeight = 19.sp, modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp))
     }
 }
 

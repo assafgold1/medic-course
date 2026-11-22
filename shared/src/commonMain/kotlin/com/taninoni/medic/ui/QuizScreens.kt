@@ -115,10 +115,11 @@ fun QuizScreen(model: AppModel, nav: Nav, s: Screen.Quiz) {
                     }
                 }
                 ProgressBar(index.toFloat() / items.size, p.blue)
-                shownImages.getOrNull(index)?.let { file ->
-                    val img = item.topic.images.firstOrNull { it.file == file } ?: com.taninoni.medic.data.TopicImage(file, "")
-                    QuestionImage(img, showCaption = cfg.instant && picked != null)
-                }
+                // Photos sit above the question; text diagrams would be unreadable (and give the answer away)
+                // in that strip, so they open full size with the explanation instead.
+                val qImg = shownImages.getOrNull(index)?.let { file -> item.topic.images.firstOrNull { it.file == file } ?: com.taninoni.medic.data.TopicImage(file, "") }
+                val diagram = qImg != null && ("--gfx-" in qImg.file || "--proto-" in qImg.file)
+                if (qImg != null && !diagram) QuestionImage(qImg, showCaption = cfg.instant && picked != null)
                 Text(item.question.q, color = p.ink, fontSize = 20.sp, fontWeight = FontWeight.SemiBold, lineHeight = 30.sp, modifier = Modifier.padding(top = 6.dp, bottom = 4.dp))
                 orders[index].forEachIndexed { k, o ->
                     val hidden = o in eliminated
@@ -190,6 +191,7 @@ fun QuizScreen(model: AppModel, nav: Nav, s: Screen.Quiz) {
                         Text(if (chosen == 0) "נכון" else "לא נכון", color = if (chosen == 0) p.good else p.bad, fontWeight = FontWeight.ExtraBold, fontSize = 17.sp)
                         Text(item.question.explanation, color = p.ink, fontSize = 15.5.sp, lineHeight = 24.sp)
                     }
+                    if (diagram) AnswerImage(qImg!!)
                     PrimaryButton(if (index + 1 < items.size) "השאלה הבאה" else "לתוצאות", Modifier.fillMaxWidth()) { next() }
                 }
                 VSpace(40.dp)
