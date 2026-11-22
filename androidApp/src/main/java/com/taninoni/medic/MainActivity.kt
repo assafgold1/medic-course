@@ -13,11 +13,26 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
         AndroidContext.app = applicationContext
+        AndroidContext.activity = this
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
                 if (AppBack.handler?.invoke() != true) finish()
             }
         })
         setContent { App() }
+    }
+
+    override fun onDestroy() {
+        if (AndroidContext.activity === this) AndroidContext.activity = null
+        super.onDestroy()
+    }
+
+    @Deprecated("Deprecated in ComponentActivity")
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == AndroidContext.NOTIFY_PERMISSION_REQUEST) {
+            AndroidContext.permissionCallback?.invoke(grantResults.firstOrNull() == android.content.pm.PackageManager.PERMISSION_GRANTED)
+            AndroidContext.permissionCallback = null
+        }
     }
 }

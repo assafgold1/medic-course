@@ -96,6 +96,12 @@ fun SettingsScreen(model: AppModel, nav: Nav) {
 
         if (user?.instructor == true) GlassRow("התקדמות החניכים", subtitle = "מי תרגל, כמה ובאילו נושאים", icon = Icons.special) { nav.go(Screen.Instructor) }
 
+        GlassRow(
+            "רצף ותזכורות",
+            subtitle = "${model.studyStreakDays} ימים ברצף · יעד ${model.dailyGoal} שאלות ביום" + if (model.reminderOn) " · תזכורת פעילה" else "",
+            icon = Icons.flame,
+        ) { nav.go(Screen.Streak) }
+
         Group("תצוגה") {
             Label(Icons.moon, "ערכת צבעים")
             Segmented(listOf("system" to "אוטומטי", "light" to "בהיר", "dark" to "כהה"), model.themeMode) { model.updateTheme(it) }

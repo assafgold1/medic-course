@@ -25,3 +25,17 @@ expect object Speech {
     fun say(text: String)
     fun stop()
 }
+
+/** The device time zone's current offset from UTC, in minutes (Israel: 120 or 180). */
+expect fun utcOffsetMinutes(): Int
+
+/** One local notification: [atMillis] is the epoch time it fires. */
+data class ReminderItem(val id: Int, val atMillis: Long, val title: String, val body: String)
+
+/** Daily practice reminders as local notifications. */
+expect object Reminders {
+    /** Asks for notification permission (once; later calls report the saved answer). May call back off the main thread. */
+    fun requestPermission(onResult: (Boolean) -> Unit)
+    /** Replaces every reminder this app has pending with [items]. */
+    fun schedule(items: List<ReminderItem>)
+}

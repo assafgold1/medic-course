@@ -4,8 +4,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.russhwolf.settings.Settings
+import com.taninoni.medic.ReminderItem
+import com.taninoni.medic.Reminders
 import com.taninoni.medic.SERVER_URL
 import com.taninoni.medic.nowMillis
+import com.taninoni.medic.utcOffsetMinutes
 import com.taninoni.medic.res.Res
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -38,9 +41,25 @@ class AppModel(private val scope: CoroutineScope) {
     /* learning extras: bookmarks, speed-blitz high score, daily study streak */
     var bookmarks by mutableStateOf(settings.getStringOrNull(K_BOOKMARKS)?.split(',')?.filter { it.isNotBlank() }?.toSet().orEmpty()); private set
     var blitzBest by mutableStateOf(settings.getInt(K_BLITZ_BEST, 0)); private set
+
+    /* daily streak, Duolingo style: a day counts once the daily goal is met */
+    var dailyGoal by mutableStateOf(settings.getInt(K_GOAL, 10)); private set
     var todayCount by mutableStateOf(0); private set
-    var studyStreakDays by mutableStateOf(settings.getInt(K_STREAK_DAYS, 0)); private set
-    val dailyGoal = 20
+    /** Local epoch day, refreshed on launch, on each answer and once a minute while the app is open. */
+    var today by mutableStateOf(localDay()); private set
+    /** Days the goal was met, and days a streak freeze covered. */
+    var metDays by mutableStateOf(readDays(K_MET)); private set
+    var frozenDays by mutableStateOf(readDays(K_FROZEN)); private set
+    var freezes by mutableStateOf(settings.getInt(K_FREEZES, 0)); private set
+    var longestStreak by mutableStateOf(settings.getInt(K_LONGEST, 0)); private set
+    var reminderOn by mutableStateOf(settings.getBoolean(K_REMIND, false)); private set
+    /** Reminder time, minutes after local midnight. */
+    var reminderMinute by mutableStateOf(settings.getInt(K_REMIND_AT, 20 * 60)); private set
+    var reminderAsked by mutableStateOf(settings.getBoolean(K_REMIND_ASKED, false)); private set
+    /** Set when today's goal is reached; the app shows the streak celebration and clears it. */
+    var celebration by mutableStateOf<Celebration?>(null); private set
+    /** A freeze saved the streak, or the streak was lost. Shown once on the home screen. */
+    var streakNotice by mutableStateOf<StreakNotice?>(null); private set
 
     private var token: String? = settings.getStringOrNull(K_TOKEN)
 
@@ -59,19 +78,143 @@ class AppModel(private val scope: CoroutineScope) {
                 .also { settings.putString(K_BUNDLED, it.version); settings.remove(K_CONTENT) }
         }
         scope.launch { refreshContent(); sync() }
-        refreshDailyStats()
+        migrateStreak()
+        refreshDay()
+        scheduleReminders()
     }
 
-    private fun currentDay(): Long = nowMillis() / 86_400_000L
+    /* ---------- daily streak ---------- */
 
-    private fun refreshDailyStats() {
-        val today = currentDay()
-        val savedDay = settings.getLong(K_LAST_DAY, -1L)
-        todayCount = if (savedDay == today) settings.getInt(K_TODAY_COUNT, 0) else 0
-        if (savedDay in 0 until (today - 1)) {
-            studyStreakDays = 0
-            settings.putInt(K_STREAK_DAYS, 0)
+    private fun localDay(): Long = (nowMillis() + utcOffsetMinutes() * 60_000L).floorDiv(DAY_MS)
+
+    /** Current streak: met days running back from today (or from yesterday while today is still open). Frozen days bridge gaps. */
+    val studyStreakDays: Int get() = streakEndingAt(if (today in metDays) today else today - 1)
+    val doneToday: Boolean get() = today in metDays
+    val streakAtRisk: Boolean get() = !doneToday && studyStreakDays > 0
+    val leftToday: Int get() = (dailyGoal - todayCount).coerceAtLeast(0)
+
+    private fun streakEndingAt(day: Long): Int {
+        var d = day
+        var n = 0
+        while (d in metDays || d in frozenDays) { if (d in metDays) n++; d-- }
+        return n
+    }
+
+    private fun readDays(key: String): Set<Long> =
+        settings.getStringOrNull(key)?.split(',')?.mapNotNull { it.toLongOrNull() }?.toSet().orEmpty()
+
+    private fun saveDays(key: String, days: Set<Long>) =
+        settings.putString(key, days.sorted().takeLast(800).joinToString(","))
+
+    /** Moves to a new day if midnight passed, spends freezes on missed days, and reloads today's count. */
+    fun refreshDay() {
+        val now = localDay()
+        if (now != today) today = now
+        todayCount = if (settings.getLong(K_COUNT_DAY, -1L) == today) settings.getInt(K_TODAY_COUNT, 0) else 0
+        checkMissedDays()
+    }
+
+    private fun migrateStreak() {
+        // Older builds kept only a counter and the last study day (UTC). Turn that into met days once.
+        if (settings.hasKey(K_MET)) return
+        val last = settings.getLong(K_LAST_DAY, -1L)
+        val count = settings.getInt(K_STREAK_DAYS, 0)
+        if (last >= 0 && count > 0) {
+            metDays = ((last - count + 1)..last).toSet()
+            if (!settings.hasKey(K_COUNT_DAY)) settings.putLong(K_COUNT_DAY, last)
+            longestStreak = maxOf(longestStreak, count); settings.putInt(K_LONGEST, longestStreak)
         }
+        saveDays(K_MET, metDays)
+    }
+
+    private fun checkMissedDays() {
+        val last = (metDays + frozenDays).maxOrNull() ?: return
+        val missed = (today - 1 - last).toInt()
+        if (missed <= 0) return
+        val before = streakEndingAt(last)
+        if (before == 0) return
+        if (missed <= freezes) {
+            frozenDays = frozenDays + ((last + 1)..(today - 1)); saveDays(K_FROZEN, frozenDays)
+            freezes -= missed; settings.putInt(K_FREEZES, freezes)
+            streakNotice = StreakNotice.Frozen(missed, before)
+        } else if (settings.getLong(K_LOST_FOR, -1L) != last) {
+            settings.putLong(K_LOST_FOR, last)
+            if (before >= 2) streakNotice = StreakNotice.Lost(before)
+        }
+    }
+
+    private fun countAnswerToday() {
+        refreshDay()
+        todayCount++
+        settings.putLong(K_COUNT_DAY, today); settings.putInt(K_TODAY_COUNT, todayCount)
+        if (!doneToday && todayCount >= dailyGoal) completeToday()
+    }
+
+    private fun completeToday() {
+        metDays = metDays + today; saveDays(K_MET, metDays)
+        val streak = studyStreakDays
+        val record = streak > longestStreak
+        if (record) { longestStreak = streak; settings.putInt(K_LONGEST, streak) }
+        val earned = streak % 7 == 0 && freezes < MAX_FREEZES
+        if (earned) { freezes++; settings.putInt(K_FREEZES, freezes) }
+        celebration = Celebration(streak, earned, record && streak > 1)
+        scheduleReminders()
+    }
+
+    fun dismissCelebration() { celebration = null }
+    fun dismissStreakNotice() { streakNotice = null }
+
+    fun setGoal(goal: Int) {
+        dailyGoal = goal; settings.putInt(K_GOAL, goal)
+        if (!doneToday && todayCount >= goal) completeToday() else scheduleReminders()
+    }
+
+    /** Turning reminders on asks for notification permission first; they stay off if it is refused. */
+    fun setReminder(on: Boolean) {
+        reminderAsked = true; settings.putBoolean(K_REMIND_ASKED, true)
+        if (!on) { reminderOn = false; settings.putBoolean(K_REMIND, false); scheduleReminders(); return }
+        Reminders.requestPermission { granted ->
+            scope.launch {
+                reminderOn = granted; settings.putBoolean(K_REMIND, granted)
+                scheduleReminders()
+            }
+        }
+    }
+
+    fun setReminderTime(minute: Int) {
+        reminderMinute = ((minute % (24 * 60)) + 24 * 60) % (24 * 60); settings.putInt(K_REMIND_AT, reminderMinute)
+        scheduleReminders()
+    }
+
+    /**
+     * Plans the next week of reminders (replacing any already set): one a day at the chosen time,
+     * none today once the goal is met, plus a last call at 22:30 while a streak is at risk.
+     */
+    fun scheduleReminders() {
+        if (!reminderOn) { Reminders.schedule(emptyList()); return }
+        val offset = utcOffsetMinutes() * 60_000L
+        val now = nowMillis()
+        fun at(day: Long, minute: Int) = day * DAY_MS + minute * 60_000L - offset
+        val streak = studyStreakDays
+        val items = mutableListOf<ReminderItem>()
+        for (i in 0..6) {
+            if (i == 0 && doneToday) continue
+            val time = at(today + i, reminderMinute)
+            if (time < now + 60_000) continue
+            val (title, body) = when {
+                i == 0 && streak > 0 -> "🔥 הרצף שלך בסכנה" to "רצף של $streak ימים מחכה לך. עוד $leftToday שאלות ושמרת עליו."
+                i == 0 -> "הגיע הזמן לתרגל 🩺" to "$dailyGoal שאלות ביום שומרות את החומר טרי. נתחיל?"
+                i % 3 == 1 -> "🔥 שומרים על הרצף?" to "עוד יום, עוד $dailyGoal שאלות. ממשיכים מאיפה שעצרת."
+                i % 3 == 2 -> "חובש טוב מתרגל כל יום" to "כמה דקות של תרגול, והרצף ממשיך לבעור."
+                else -> "הגיע הזמן לתרגל 🩺" to "$dailyGoal שאלות ביום שומרות את החומר טרי."
+            }
+            items += ReminderItem(100 + i, time, title, body)
+        }
+        val lastCall = at(today, LAST_CALL_MINUTE)
+        if (!doneToday && streak > 0 && lastCall > now + 60_000 && reminderMinute < LAST_CALL_MINUTE) {
+            items += ReminderItem(200, lastCall, "⏰ הזדמנות אחרונה להיום", "הרצף של $streak ימים נגמר בחצות. שתי דקות וזה מאחוריך.")
+        }
+        Reminders.schedule(items)
     }
 
     /* ---------- content ---------- */
@@ -116,18 +259,7 @@ class AppModel(private val scope: CoroutineScope) {
     fun recordAnswer(id: String, correct: Boolean) {
         progress = progress.copy(answers = progress.answers + (id to Answer(if (correct) 1 else 0, nowMillis())), updatedAt = nowMillis())
         saveProgress()
-        val today = currentDay()
-        val savedDay = settings.getLong(K_LAST_DAY, -1L)
-        if (savedDay != today) {
-            val nextStreak = if (savedDay == today - 1) studyStreakDays + 1 else 1
-            studyStreakDays = nextStreak
-            settings.putInt(K_STREAK_DAYS, nextStreak)
-            settings.putLong(K_LAST_DAY, today)
-            todayCount = 1
-        } else {
-            todayCount++
-        }
-        settings.putInt(K_TODAY_COUNT, todayCount)
+        countAnswerToday()
     }
 
     fun isBookmarked(id: String) = id in bookmarks
@@ -324,6 +456,28 @@ class AppModel(private val scope: CoroutineScope) {
         const val K_LAST_DAY = "last_study_day"
         const val K_TODAY_COUNT = "today_count"
         const val K_STREAK_DAYS = "study_streak_days"
-        const val DAILY_GOAL = 20
+        const val K_COUNT_DAY = "today_count_day"
+        const val K_GOAL = "daily_goal"
+        const val K_MET = "streak_met_days"
+        const val K_FROZEN = "streak_frozen_days"
+        const val K_FREEZES = "streak_freezes"
+        const val K_LONGEST = "streak_longest"
+        const val K_LOST_FOR = "streak_lost_for"
+        const val K_REMIND = "reminder_on"
+        const val K_REMIND_AT = "reminder_minute"
+        const val K_REMIND_ASKED = "reminder_asked"
+        const val DAY_MS = 86_400_000L
+        const val MAX_FREEZES = 2
+        const val LAST_CALL_MINUTE = 22 * 60 + 30
     }
+}
+
+/** Today's goal was just met: the streak now stands at [streak]. */
+data class Celebration(val streak: Int, val freezeEarned: Boolean, val record: Boolean)
+
+sealed interface StreakNotice {
+    /** [days] missed days were covered by freezes, keeping a streak of [streak]. */
+    data class Frozen(val days: Int, val streak: Int) : StreakNotice
+    /** A streak of [days] ended. */
+    data class Lost(val days: Int) : StreakNotice
 }

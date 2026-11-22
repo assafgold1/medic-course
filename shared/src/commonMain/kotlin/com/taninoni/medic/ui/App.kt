@@ -56,6 +56,7 @@ sealed interface Screen {
     data object Reference : Screen
     data object Protocols : Screen
     data class ProtocolView(val id: String) : Screen
+    data object Streak : Screen
     data object Account : Screen
     data object Settings : Screen
     data object Instructor : Screen
@@ -101,6 +102,8 @@ fun App() {
     val nav = remember { Nav() }
     LaunchedEffect(Unit) { model.load() }
     LaunchedEffect(Unit) { AnswerSound.preload() }
+    // Roll the streak over at midnight while the app stays open.
+    LaunchedEffect(Unit) { while (true) { kotlinx.coroutines.delay(60_000); if (model.content != null) model.refreshDay() } }
     LaunchedEffect(model.content) { AnimatedImages.byFile = model.content?.topics.orEmpty().flatMap { it.images }.associateBy { it.file } }
     var splash by remember { mutableStateOf(true) }
     LaunchedEffect(model.user == null) { if (model.user == null) nav.home() }
@@ -152,6 +155,7 @@ fun App() {
                             Screen.Reference -> ReferenceScreen(model, nav)
                             Screen.Protocols -> ProtocolsScreen(model, nav)
                             is Screen.ProtocolView -> ProtocolScreen(model, nav, s.id)
+                            Screen.Streak -> StreakScreen(model, nav)
                             Screen.Account -> AccountScreen(model, nav)
                             Screen.Settings -> SettingsScreen(model, nav)
                             Screen.Instructor -> InstructorScreen(model, nav)
@@ -164,6 +168,7 @@ fun App() {
                         exit = slideOutVertically(tween(200)) { it } + fadeOut(tween(150)),
                     ) { TabBar(nav) }
                     ImageViewerHost()
+                    StreakOverlays(model, nav)
                 }
                 if (splash) SplashScreen(ready = { model.content != null }) { splash = false }
             }

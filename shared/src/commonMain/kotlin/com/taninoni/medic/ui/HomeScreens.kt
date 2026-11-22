@@ -1,6 +1,15 @@
 package com.taninoni.medic.ui
 
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.runtime.remember
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -53,8 +62,10 @@ fun HomeScreen(model: AppModel, nav: Nav) {
     val searching = query.isNotEmpty()
     val firstName = model.user?.name?.trim()?.substringBefore(' ').orEmpty()
 
-    GlassLazyPage("מסלול חובש", null) {
-        item {
+    Box(Modifier.fillMaxSize()) {
+    GlassLazyPage("מסלול חובש", null, showTopTitle = false) {
+        item { Spacer(Modifier.height(10.dp)) }
+        if (!searching) item {
             Row(
                 Modifier.pageItem().padding(top = 2.dp, bottom = 18.dp),
                 verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp),
@@ -66,13 +77,15 @@ fun HomeScreen(model: AppModel, nav: Nav) {
                 }
             }
         }
-        item {
-            HeroCard(model, nav, overall, Modifier.pageItem())
+        if (!searching) item {
+            StreakCard(model, Modifier.pageItem().padding(bottom = 14.dp)) { nav.go(Screen.Streak) }
         }
-        item {
+        if (!searching) item {
+            HeroCard(model, nav, overall, right, all.size, Modifier.pageItem())
+        }
+        if (!searching) item {
             Column(Modifier.pageItem().padding(top = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                SearchField(queryState)
-                if (!searching) QuickTiles(model, nav)
+                QuickTiles(model, nav)
             }
         }
         model.categories.forEach { cat ->
@@ -120,11 +133,14 @@ fun HomeScreen(model: AppModel, nav: Nav) {
             }
         }
     }
+    // Pinned at the top: the list scrolls under it and the glass bends what passes beneath.
+    SearchField(queryState, Modifier.align(Alignment.TopCenter).windowInsetsPadding(WindowInsets.statusBars).padding(top = 6.dp).pageItem())
+    }
 }
 
-/** Mastery ring, today's goal and streak, and the two main actions. */
+/** Mastery ring and the two main actions. */
 @Composable
-private fun HeroCard(model: AppModel, nav: Nav, overall: Int, modifier: Modifier) {
+private fun HeroCard(model: AppModel, nav: Nav, overall: Int, right: Int, total: Int, modifier: Modifier) {
     val p = Pal
     Column(
         modifier.glass(RoundedCornerShape(34.dp), elevation = 18.dp).padding(20.dp),
@@ -134,20 +150,8 @@ private fun HeroCard(model: AppModel, nav: Nav, overall: Int, modifier: Modifier
             Ring(overall, size = 112.dp, label = "שליטה")
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text("השליטה שלך בחומר", color = p.ink, fontSize = 18.sp, fontWeight = FontWeight.ExtraBold)
-                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Row(verticalAlignment = Alignment.Bottom) {
-                        Text("יעד יומי", color = p.muted, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
-                        Text("${model.todayCount}/${model.dailyGoal}", color = p.ink, fontSize = 13.sp, fontWeight = FontWeight.ExtraBold)
-                    }
-                    ProgressBar(model.todayCount.toFloat() / model.dailyGoal, p.blue)
-                }
-                if (model.studyStreakDays > 0) Row(
-                    Modifier.clip(RoundedCornerShape(50)).background(p.midSoft).padding(horizontal = 10.dp, vertical = 5.dp),
-                    verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp),
-                ) {
-                    Icon(Icons.flame, null, tint = p.mid, modifier = Modifier.size(16.dp))
-                    Text("${model.studyStreakDays} ימים ברצף", color = p.mid, fontSize = 13.sp, fontWeight = FontWeight.ExtraBold)
-                }
+                Text("$right מתוך $total שאלות נענו נכון", color = p.muted, fontSize = 13.5.sp, fontWeight = FontWeight.SemiBold, lineHeight = 18.sp)
+                ProgressBar(if (total == 0) 0f else right.toFloat() / total, p.blue)
             }
         }
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -216,16 +220,25 @@ private fun NumberBadge(n: Int, pct: Int, seen: Boolean) {
 }
 
 @Composable
-fun SearchField(state: TextFieldState) {
+fun SearchField(state: TextFieldState, modifier: Modifier = Modifier) {
     val p = Pal
+    val src = remember { MutableInteractionSource() }
+    val focus = remember { FocusRequester() }
     Row(
-        Modifier.fillMaxWidth().height(54.dp).glass(RoundedCornerShape(50), elevation = 6.dp).padding(horizontal = 18.dp),
+        modifier.fillMaxWidth().height(54.dp)
+            .softShadow(RoundedCornerShape(50), 14.dp, p.glassShadow)
+            .liquidGlass(
+                RoundedCornerShape(50), interaction = src, frost = .45f,
+                fill = if (p.dark) Color(0xFF231719).copy(alpha = .38f) else Color.White.copy(alpha = .34f),
+            )
+            .clickable(src, indication = null) { focus.requestFocus() }
+            .padding(horizontal = 18.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         Icon(Icons.search, null, tint = p.muted, modifier = Modifier.size(20.dp))
         Box(Modifier.weight(1f)) {
             if (state.text.isEmpty()) Text("חיפוש נושא: לידה, כוויות, אמבו…", color = p.muted, fontSize = 15.sp, maxLines = 1)
-            BasicTextField(state, lineLimits = TextFieldLineLimits.SingleLine, textStyle = TextStyle(color = p.ink, fontSize = 15.sp), cursorBrush = SolidColor(p.blue), modifier = Modifier.fillMaxWidth())
+            BasicTextField(state, lineLimits = TextFieldLineLimits.SingleLine, textStyle = TextStyle(color = p.ink, fontSize = 15.sp), cursorBrush = SolidColor(p.blue), modifier = Modifier.fillMaxWidth().focusRequester(focus))
         }
         if (state.text.isNotEmpty()) Box(
             Modifier.size(26.dp).clip(CircleShape).background(p.hair).bouncy(label = "ניקוי") { state.clearText() },
