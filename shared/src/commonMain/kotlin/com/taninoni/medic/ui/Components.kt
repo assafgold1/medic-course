@@ -110,9 +110,13 @@ fun PrimaryButton(text: String, modifier: Modifier = Modifier, enabled: Boolean 
 @Composable
 fun GhostButton(text: String, modifier: Modifier = Modifier, enabled: Boolean = true, icon: ImageVector? = null, onClick: () -> Unit) {
     val p = Pal
+    val src = remember { MutableInteractionSource() }
     Row(
-        modifier.heightIn(min = 54.dp).bouncy(enabled = enabled, onClick = onClick).alpha(if (enabled) 1f else .5f)
-            .glass(RoundedCornerShape(50), elevation = 6.dp).padding(vertical = 13.dp, horizontal = 16.dp),
+        modifier.heightIn(min = 54.dp).alpha(if (enabled) 1f else .5f)
+            .softShadow(RoundedCornerShape(50), 10.dp, p.glassShadow)
+            .liquidGlass(RoundedCornerShape(50), interaction = src, frost = .75f)
+            .bouncy(enabled = enabled, interaction = src, pressedScale = 1f, onClick = onClick)
+            .padding(vertical = 13.dp, horizontal = 16.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
         verticalAlignment = Alignment.CenterVertically,
     ) {

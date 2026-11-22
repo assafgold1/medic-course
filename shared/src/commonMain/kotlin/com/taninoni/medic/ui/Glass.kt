@@ -37,6 +37,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
+import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.derivedStateOf
@@ -102,6 +104,11 @@ val TOP_BAR = 58.dp
 
 /* ---------------- backdrop ---------------- */
 
+/** Scroll position of the page in front, in px, so the backdrop light can drift behind it (parallax). */
+object Parallax {
+    var scroll by mutableFloatStateOf(0f)
+}
+
 @Composable
 fun AmbientBackdrop(modifier: Modifier = Modifier) {
     val p = Pal
@@ -129,11 +136,13 @@ fun AmbientBackdrop(modifier: Modifier = Modifier) {
             floatArrayOf(.88f, .74f, .66f, -1f, 4.4f),
             floatArrayOf(.45f, .98f, .72f, 1f, 5.2f),
         )
-        val alpha = if (p.dark) .55f else .42f
+        val alpha = if (p.dark) .5f else .55f
+        // The light sits further back than the page: it slides up at a fraction of the scroll speed.
+        val lift = -minOf(Parallax.scroll, 2400f) * .12f
         specs.forEachIndexed { i, s ->
             val ang = a * s[3] + s[4]
-            val cx = w * s[0] + cos(ang) * w * .10f
-            val cy = h * s[1] + sin(ang * 1.3f) * h * .05f
+            val cx = w * s[0] + cos(ang) * w * .16f
+            val cy = h * s[1] + sin(ang * 1.3f) * h * .08f + lift * (.6f + .2f * i)
             val r = maxOf(w, h * .55f) * s[2] * (1f + .06f * sin(ang * 2f))
             val c = p.blobs[i % p.blobs.size]
             drawCircle(
@@ -147,26 +156,15 @@ fun AmbientBackdrop(modifier: Modifier = Modifier) {
 /* ---------------- materials ---------------- */
 
 /**
- * Frosted glass for cards: a translucent fill that lets the ambient light through, a specular rim
- * that is bright where the light hits (top-start) and fades round the far side, and a soft drop shadow.
+ * The card material everywhere: deep frosted glass. A heavy real blur of the moving light behind,
+ * a thin milky fill (with an optional [tint] on top), a specular sheen and a bright rim.
  */
 fun Modifier.glass(
     shape: Shape = RoundedCornerShape(26.dp),
     tint: Color = Color.Unspecified,
     elevation: Dp = 10.dp,
     rim: Boolean = true,
-): Modifier = composed {
-    val p = Pal
-    this
-        .then(if (elevation > 0.dp) Modifier.softShadow(shape, elevation, p.glassShadow) else Modifier)
-        .clip(shape)
-        .background(Brush.verticalGradient(listOf(p.glassTop, p.glassBottom)))
-        .then(if (tint.isSpecified()) Modifier.background(tint) else Modifier)
-        .then(
-            if (rim) Modifier.border(1.dp, Brush.linearGradient(listOf(p.rimHi, p.rimLo, p.rimLo, p.rimHi.copy(alpha = p.rimHi.alpha * .5f))), shape)
-            else Modifier,
-        )
-}
+): Modifier = composed { frosted(shape, if (tint.isSpecified()) tint else Color.Transparent, elevation, 30.dp, rim) }
 
 private fun Color.isSpecified() = this != Color.Unspecified
 
@@ -219,7 +217,7 @@ fun Modifier.liquidGlass(
             if (!clear) optics { copy(blurRadius = OpticalSizeValue.Fixed((6 + 22 * frost).dp)) }
             if (p.dark) {
                 specularIntensity(.45f); edgeShadow(Color.Black.copy(alpha = .3f)); whitePoint(-.18f); contrast(.12f)
-                backgroundColor(Color(0xFF5A4448).copy(alpha = .22f + .3f * frost))
+                backgroundColor(Color(0xFF45403E).copy(alpha = .22f + .3f * frost))
             } else {
                 specularIntensity(.75f); whitePoint(.25f); edgeShadow(Color(0x1E783214))
                 backgroundColor(Color.White.copy(alpha = .2f + .5f * frost))
@@ -240,7 +238,7 @@ fun Modifier.liquidGlass(
 fun Modifier.frostedGlass(shape: RoundedCornerShape, tint: Color = Color.Transparent, radius: Dp = 26.dp): Modifier {
     val p = Pal
     val haze = LocalHaze.current
-    val fill = tint.compositeOver(if (p.dark) Color(0xFF231719).copy(alpha = .72f) else Color.White.copy(alpha = .62f))
+    val fill = tint.compositeOver(if (p.dark) Color(0xFF1D1A19).copy(alpha = .72f) else Color.White.copy(alpha = .62f))
     val style = remember(fill, radius) {
         HazeBlurStyle {
             blurRadius(radius)
@@ -258,6 +256,42 @@ fun Modifier.frostedGlass(shape: RoundedCornerShape, tint: Color = Color.Transpa
             drawRect(Brush.verticalGradient(listOf(Color.White.copy(alpha = if (p.dark) .14f else .5f), Color.Transparent), endY = size.height * .55f))
         }
         .border(1.dp, Brush.linearGradient(listOf(p.rimHi, p.rimLo, p.rimLo, p.rimHi.copy(alpha = p.rimHi.alpha * .6f))), shape)
+}
+
+/**
+ * Deep frosted glass for content cards: a heavy real blur of the moving light behind, a thin milky fill,
+ * a specular sheen across the top and a bright rim. As the card scrolls, the colour under it shifts.
+ */
+@Composable
+fun Modifier.deepGlass(
+    shape: Shape = RoundedCornerShape(30.dp),
+    elevation: Dp = 18.dp,
+    tint: Color = Color.Transparent,
+    radius: Dp = 34.dp,
+): Modifier = frosted(shape, tint, elevation, radius, rim = true)
+
+@Composable
+private fun Modifier.frosted(shape: Shape, tint: Color, elevation: Dp, radius: Dp, rim: Boolean): Modifier {
+    val p = Pal
+    val haze = LocalHaze.current
+    val fill = tint.compositeOver(if (p.dark) Color(0xFF141014).copy(alpha = .46f) else Color.White.copy(alpha = .42f))
+    val style = remember(fill, radius) {
+        HazeBlurStyle {
+            blurRadius(radius)
+            noiseFactor(.07f)
+            colorEffects(listOf(HazeColorEffect.tint(fill)))
+        }
+    }
+    return this
+        .then(if (elevation > 0.dp) Modifier.softShadow(shape, elevation, p.glassShadow) else Modifier)
+        .clip(shape)
+        .hazeBlur(HazeInput.Sources(haze), style)
+        .drawBehind {
+            // Light from above: a bright sheen fading out by mid-height, and a faint glow along the bottom edge.
+            drawRect(Brush.verticalGradient(listOf(Color.White.copy(alpha = if (p.dark) .13f else .5f), Color.Transparent), endY = size.height * .5f))
+            drawRect(Brush.verticalGradient(listOf(Color.Transparent, Color.White.copy(alpha = if (p.dark) .04f else .18f)), startY = size.height * .7f))
+        }
+        .then(if (rim) Modifier.border(1.dp, Brush.linearGradient(listOf(p.rimHi, p.rimLo, p.rimLo, p.rimHi.copy(alpha = p.rimHi.alpha * .7f))), shape) else Modifier)
 }
 
 /* ---------------- motion ---------------- */
@@ -362,6 +396,8 @@ fun GlassPage(
 ) {
     val haze = LocalHaze.current
     val collapsed by remember(showLargeTitle) { derivedStateOf { if (!showLargeTitle) 1f else (scroll.value / 90f).coerceIn(0f, 1f) } }
+    LaunchedEffect(scroll) { snapshotFlow { scroll.value.toFloat() }.collect { Parallax.scroll = it } }
+    DisposableEffect(Unit) { onDispose { Parallax.scroll = 0f } }
     Box(Modifier.fillMaxSize()) {
         Column(
             Modifier.fillMaxSize().hazeSource(haze, zIndex = 1f).verticalScroll(scroll)
@@ -372,7 +408,14 @@ fun GlassPage(
                 Modifier.widthIn(max = 720.dp).fillMaxWidth().padding(horizontal = 18.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
-                if (showLargeTitle) LargeTitle(title, subtitle) else Spacer(Modifier.height(6.dp))
+                if (showLargeTitle) Box(
+                    Modifier.graphicsLayer {
+                        // The large title lags behind the content and fades as the compact one takes over.
+                        val v = scroll.value.toFloat()
+                        translationY = v * .4f
+                        alpha = 1f - (v / 160f).coerceIn(0f, 1f)
+                    },
+                ) { LargeTitle(title, subtitle) } else Spacer(Modifier.height(6.dp))
                 content()
                 BottomSpace(24.dp + bottomSpace)
             }
@@ -394,6 +437,8 @@ fun GlassLazyPage(
 ) {
     val haze = LocalHaze.current
     val collapsed by remember { derivedStateOf { if (state.firstVisibleItemIndex > 0) 1f else (state.firstVisibleItemScrollOffset / 140f).coerceIn(0f, 1f) } }
+    LaunchedEffect(state) { snapshotFlow { state.firstVisibleItemIndex * 600f + state.firstVisibleItemScrollOffset }.collect { Parallax.scroll = it } }
+    DisposableEffect(Unit) { onDispose { Parallax.scroll = 0f } }
     val top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     Box(Modifier.fillMaxSize()) {
         LazyColumn(

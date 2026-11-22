@@ -1,6 +1,19 @@
 package com.taninoni.medic.ui
 
 import androidx.compose.foundation.border
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.spring
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
+import androidx.compose.ui.composed
+import androidx.compose.ui.graphics.graphicsLayer
+import kotlinx.coroutines.delay
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.WindowInsets
@@ -62,29 +75,42 @@ fun HomeScreen(model: AppModel, nav: Nav) {
     val searching = query.isNotEmpty()
     val firstName = model.user?.name?.trim()?.substringBefore(' ').orEmpty()
 
+    val listState = rememberLazyListState()
+    // The header drifts slower than the cards and fades as it goes; the backdrop light drifts slower still.
+    val headerScroll by remember { derivedStateOf { if (listState.firstVisibleItemIndex == 0) listState.firstVisibleItemScrollOffset.toFloat() else 2000f } }
+    // Cards rise into place once, when the screen first appears.
+    var entered by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { delay(900); entered = true }
+
     Box(Modifier.fillMaxSize()) {
-    GlassLazyPage("מסלול חובש", null, showTopTitle = false) {
-        item { Spacer(Modifier.height(10.dp)) }
+    GlassLazyPage("מסלול חובש", null, state = listState, showTopTitle = false) {
+        if (searching) item { Spacer(Modifier.height(10.dp)) }
         if (!searching) item {
             Row(
-                Modifier.pageItem().padding(top = 2.dp, bottom = 18.dp),
-                verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp),
+                Modifier.pageItem().padding(top = 18.dp, bottom = 22.dp)
+                    .graphicsLayer {
+                        val k = (headerScroll / 260f).coerceIn(0f, 1f)
+                        translationY = headerScroll * .45f
+                        alpha = 1f - k
+                        scaleX = 1f - .06f * k; scaleY = 1f - .06f * k
+                    },
+                verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp),
             ) {
-                Logo(54.dp)
+                Box(Modifier.size(66.dp).liquidGlass(CircleShape), contentAlignment = Alignment.Center) { Logo(48.dp) }
                 Column(Modifier.weight(1f)) {
-                    Text(if (firstName.isNotEmpty()) "שלום, $firstName" else "שלום", color = p.blue, fontSize = 14.sp, fontWeight = FontWeight.Bold)
-                    Text("מסלול חובש", color = p.ink, fontSize = 32.sp, lineHeight = 36.sp, fontWeight = FontWeight.Black)
+                    Text(if (firstName.isNotEmpty()) "שלום, $firstName" else "שלום", color = p.blue, fontSize = 15.sp, fontWeight = FontWeight.ExtraBold)
+                    Text("מסלול חובש", color = p.ink, fontSize = 38.sp, lineHeight = 42.sp, fontWeight = FontWeight.Black)
                 }
             }
         }
         if (!searching) item {
-            StreakCard(model, Modifier.pageItem().padding(bottom = 14.dp)) { nav.go(Screen.Streak) }
+            StreakCard(model, Modifier.pageItem().padding(bottom = 16.dp).rise(0, entered)) { nav.go(Screen.Streak) }
         }
         if (!searching) item {
-            HeroCard(model, nav, overall, right, all.size, Modifier.pageItem())
+            HeroCard(model, nav, overall, right, all.size, Modifier.pageItem().rise(1, entered))
         }
         if (!searching) item {
-            Column(Modifier.pageItem().padding(top = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Column(Modifier.pageItem().padding(top = 16.dp).rise(2, entered), verticalArrangement = Arrangement.spacedBy(14.dp)) {
                 QuickTiles(model, nav)
             }
         }
@@ -107,8 +133,8 @@ fun HomeScreen(model: AppModel, nav: Nav) {
                     val seen = model.seen(items)
                     val pct = model.mastery(items)
                     Row(
-                        Modifier.pageItem().padding(vertical = 5.dp).bouncy { nav.go(Screen.Topic(t.id)) }
-                            .glass(RoundedCornerShape(24.dp), elevation = 5.dp).padding(horizontal = 14.dp, vertical = 13.dp),
+                        Modifier.pageItem().padding(vertical = 6.dp).bouncy { nav.go(Screen.Topic(t.id)) }
+                            .deepGlass(RoundedCornerShape(26.dp), elevation = 8.dp, radius = 28.dp).padding(horizontal = 14.dp, vertical = 13.dp),
                         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp),
                     ) {
                         NumberBadge(t.number, pct, seen)
@@ -143,14 +169,17 @@ fun HomeScreen(model: AppModel, nav: Nav) {
 private fun HeroCard(model: AppModel, nav: Nav, overall: Int, right: Int, total: Int, modifier: Modifier) {
     val p = Pal
     Column(
-        modifier.glass(RoundedCornerShape(34.dp), elevation = 18.dp).padding(20.dp),
+        modifier.deepGlass(RoundedCornerShape(36.dp), elevation = 22.dp).padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(18.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(18.dp)) {
-            Ring(overall, size = 112.dp, label = "שליטה")
+            // Glass in glass: the ring sits in a clear lens that bends the light behind the card.
+            Box(Modifier.size(128.dp).liquidGlass(CircleShape, frost = .8f), contentAlignment = Alignment.Center) {
+                Ring(overall, size = 110.dp, label = "שליטה")
+            }
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text("השליטה שלך בחומר", color = p.ink, fontSize = 18.sp, fontWeight = FontWeight.ExtraBold)
-                Text("$right מתוך $total שאלות נענו נכון", color = p.muted, fontSize = 13.5.sp, fontWeight = FontWeight.SemiBold, lineHeight = 18.sp)
+                Text("$right/$total נענו נכון", color = p.muted, fontSize = 13.5.sp, fontWeight = FontWeight.SemiBold, lineHeight = 18.sp)
                 ProgressBar(if (total == 0) 0f else right.toFloat() / total, p.blue)
             }
         }
@@ -174,13 +203,13 @@ private fun QuickTiles(model: AppModel, nav: Nav) {
     val protocols = model.content?.protocols.orEmpty()
     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         // Scene safety comes before everything else, so it stays one tap away on the home screen.
-        if (safety != null) Tile(Icons.shield, "בטיחות בזירה", "עוצרים · סוקרים · מתמגנים", p.bad, Modifier.weight(1f)) { ViewerState.show(listOf(safety), 0) }
+        if (safety != null) Tile(Icons.shield, "בטיחות בזירה", "עוצרים · סוקרים · מתמגנים", p.blue, Modifier.weight(1f)) { ViewerState.show(listOf(safety), 0) }
         if (protocols.isNotEmpty()) Tile(Icons.flow, "פרוטוקולים", "${protocols.size} תרשימי זרימה", p.blue, Modifier.weight(1f)) { nav.go(Screen.Protocols) }
     }
     model.lastTopicId?.let { model.topic(it) }?.let { t ->
         Row(
             Modifier.fillMaxWidth().bouncy { nav.go(Screen.Topic(t.id)) }
-                .glass(RoundedCornerShape(24.dp), tint = p.blueSoft).padding(horizontal = 16.dp, vertical = 14.dp),
+                .deepGlass(RoundedCornerShape(26.dp), elevation = 12.dp).padding(horizontal = 16.dp, vertical = 14.dp),
             verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp),
         ) {
             IconTile(Icons.basics, p.blue, solid = true)
@@ -197,7 +226,7 @@ private fun QuickTiles(model: AppModel, nav: Nav) {
 private fun Tile(icon: ImageVector, title: String, sub: String, color: Color, modifier: Modifier, onClick: () -> Unit) {
     val p = Pal
     Column(
-        modifier.heightIn(min = 128.dp).bouncy(onClick = onClick).glass(RoundedCornerShape(26.dp), tint = color.copy(alpha = .07f)).padding(16.dp),
+        modifier.heightIn(min = 132.dp).bouncy(onClick = onClick).deepGlass(RoundedCornerShape(28.dp), elevation = 14.dp).padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         IconTile(icon, color, solid = true)
@@ -213,8 +242,8 @@ private fun NumberBadge(n: Int, pct: Int, seen: Boolean) {
     val p = Pal
     val c = if (seen) p.tone(pct) else p.muted
     Box(
-        Modifier.size(38.dp).clip(CircleShape).background(Brush.linearGradient(listOf(c.copy(alpha = .22f), c.copy(alpha = .06f))))
-            .border(1.5.dp, c.copy(alpha = if (seen) .6f else .2f), CircleShape),
+        Modifier.size(40.dp).liquidGlass(CircleShape, tint = if (seen) c.copy(alpha = .14f) else Color.Transparent)
+            .border(1.5.dp, c.copy(alpha = if (seen) .6f else .15f), CircleShape),
         contentAlignment = Alignment.Center,
     ) { Text("$n", color = if (seen) c else p.ink.copy(alpha = .7f), fontSize = 14.sp, fontWeight = FontWeight.Black) }
 }
@@ -229,7 +258,7 @@ fun SearchField(state: TextFieldState, modifier: Modifier = Modifier) {
             .softShadow(RoundedCornerShape(50), 14.dp, p.glassShadow)
             .liquidGlass(
                 RoundedCornerShape(50), interaction = src, frost = .45f,
-                fill = if (p.dark) Color(0xFF231719).copy(alpha = .38f) else Color.White.copy(alpha = .34f),
+                fill = if (p.dark) Color(0xFF1D1A19).copy(alpha = .38f) else Color.White.copy(alpha = .34f),
             )
             .clickable(src, indication = null) { focus.requestFocus() }
             .padding(horizontal = 18.dp),
@@ -301,7 +330,7 @@ fun PickerScreen(model: AppModel, nav: Nav) {
             GlassRow(
                 "אתגר 60 שניות",
                 subtitle = if (model.blitzBest > 0) "שיא אישי: ${model.blitzBest} נק'" else "כמה שיותר שאלות בדקה אחת",
-                icon = Icons.bolt, iconColor = p.mid, inPanel = true,
+                icon = Icons.bolt, iconColor = p.blue, inPanel = true,
             ) {
                 val cats = allIds.filter { it in sel }.ifEmpty { allIds }
                 nav.go(Screen.Blitz(model.pick(cats, 80)))
@@ -364,5 +393,20 @@ private fun CategoryCard(name: String, catId: String, count: Int, pct: Int, seen
             Text(if (seen) "$pct%" else "חדש", color = if (seen) p.tone(pct) else p.muted, fontSize = if (seen) 24.sp else 16.sp, fontWeight = FontWeight.Black, modifier = Modifier.weight(1f))
             Text("$count שאלות", color = p.muted, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
         }
+    }
+}
+
+/** Slides a card up into place with a short stagger the first time the screen appears. */
+private fun Modifier.rise(index: Int, entered: Boolean): Modifier = composed {
+    val anim = remember { Animatable(if (entered) 1f else 0f) }
+    LaunchedEffect(Unit) {
+        if (!entered) { delay(90L * index + 60L); anim.animateTo(1f, spring(dampingRatio = .72f, stiffness = 220f)) }
+    }
+    graphicsLayer {
+        val v = anim.value
+        alpha = v.coerceIn(0f, 1f)
+        translationY = (1f - v) * 60.dp.toPx()
+        val sc = .94f + .06f * v
+        scaleX = sc; scaleY = sc
     }
 }

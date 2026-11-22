@@ -36,32 +36,36 @@ data class Palette(
     fun toneSoft(p: Int) = if (p >= 80) goodSoft else if (p >= 50) midSoft else badSoft
 }
 
-// Brand orange (#F26922) as liquid light under frosted glass. Token names kept from the first design: "blue" is the brand accent.
+// One accent: brand orange (#F26922). The backdrop is a near-neutral base with a soft glow in the same
+// orange family only, so every glass card picks up the same tint. Semantic colours (good/mid/bad) are
+// kept for right/wrong and mastery, never for decoration. Token names kept from the first design:
+// "blue" is the brand accent.
 private val Light = Palette(
     dark = false,
-    bandA = Color(0xFFFF7A1F), bandB = Color(0xFFFF3D6E), blue = Color(0xFFE2560B), blueSoft = Color(0x24F26922),
-    paper = Color(0x66FFFFFF), surface = Color(0x9EFFFFFF), ink = Color(0xFF1C1411), muted = Color(0xFF7C6A62),
-    line = Color(0x55F26922), hair = Color(0x14000000),
-    good = Color(0xFF0E9F55), goodSoft = Color(0x2416A34A), mid = Color(0xFFC97A00), midSoft = Color(0x26F5A400),
-    bad = Color(0xFFE0263B), badSoft = Color(0x22E0263B),
-    solid = Color(0xFFFFFBF8),
-    baseTop = Color(0xFFFFF3EA), baseBottom = Color(0xFFFCE7EE),
-    blobs = listOf(Color(0xFFFF8A3D), Color(0xFFFF4F7B), Color(0xFFFFC34D), Color(0xFFA996FF), Color(0xFFFF6A2A)),
-    glassTop = Color(0xB8FFFFFF), glassBottom = Color(0x80FFFFFF), rimHi = Color(0xF2FFFFFF), rimLo = Color(0x33FFFFFF),
-    glassShadow = Color(0x22B4501E),
+    bandA = Color(0xFFFF8A3D), bandB = Color(0xFFEE5A16), blue = Color(0xFFE85D12), blueSoft = Color(0x1FF26922),
+    paper = Color(0x80FFFFFF), surface = Color(0xB3FFFFFF), ink = Color(0xFF1B1613), muted = Color(0xFF85796F),
+    line = Color(0x40F26922), hair = Color(0x12000000),
+    good = Color(0xFF14A05A), goodSoft = Color(0x1F14A05A), mid = Color(0xFFD98700), midSoft = Color(0x1FD98700),
+    bad = Color(0xFFE5484D), badSoft = Color(0x1FE5484D),
+    solid = Color(0xFFFFFCFA),
+    baseTop = Color(0xFFFFF5EE), baseBottom = Color(0xFFFFEEF0),
+    // Vivid warm light, one family from amber to magenta, so the frosted glass always reads as one material.
+    blobs = listOf(Color(0xFFFF7A1F), Color(0xFFFF3D6E), Color(0xFFFFB238), Color(0xFFE23C8F), Color(0xFFFF5A36)),
+    glassTop = Color(0xD9FFFFFF), glassBottom = Color(0xB3FFFFFF), rimHi = Color(0xFFFFFFFF), rimLo = Color(0x40FFFFFF),
+    glassShadow = Color(0x1A2B1A10),
 )
 private val Dark = Palette(
     dark = true,
-    bandA = Color(0xFFFF7A1F), bandB = Color(0xFFFF3D6E), blue = Color(0xFFFF8E4D), blueSoft = Color(0x2EFF7A1F),
-    paper = Color(0x0FFFFFFF), surface = Color(0x17FFFFFF), ink = Color(0xFFFBF2EC), muted = Color(0xFFB8A39A),
-    line = Color(0x66FF8E4D), hair = Color(0x1AFFFFFF),
-    good = Color(0xFF3EE08A), goodSoft = Color(0x2E3EE08A), mid = Color(0xFFFFC147), midSoft = Color(0x2EFFC147),
-    bad = Color(0xFFFF5C6E), badSoft = Color(0x30FF5C6E),
-    solid = Color(0xFF1C1316),
-    baseTop = Color(0xFF0E0807), baseBottom = Color(0xFF150A12),
-    blobs = listOf(Color(0xFFE5550F), Color(0xFFD0245C), Color(0xFFB36B00), Color(0xFF4B3BCB), Color(0xFFFF6A2A)),
-    glassTop = Color(0x26FFFFFF), glassBottom = Color(0x0DFFFFFF), rimHi = Color(0x66FFFFFF), rimLo = Color(0x0FFFFFFF),
-    glassShadow = Color(0x40000000),
+    bandA = Color(0xFFFF8A3D), bandB = Color(0xFFEE5A16), blue = Color(0xFFFF8F4A), blueSoft = Color(0x26FF8A3D),
+    paper = Color(0x0FFFFFFF), surface = Color(0x17FFFFFF), ink = Color(0xFFF7F1EC), muted = Color(0xFFA89C93),
+    line = Color(0x55FF8F4A), hair = Color(0x17FFFFFF),
+    good = Color(0xFF3DD68C), goodSoft = Color(0x263DD68C), mid = Color(0xFFFFB547), midSoft = Color(0x26FFB547),
+    bad = Color(0xFFFF6369), badSoft = Color(0x2BFF6369),
+    solid = Color(0xFF1A1513),
+    baseTop = Color(0xFF0B0808), baseBottom = Color(0xFF0D070B),
+    blobs = listOf(Color(0xFFE5550F), Color(0xFFD0245C), Color(0xFFC77A00), Color(0xFF9B1F6E), Color(0xFFFF5A1F)),
+    glassTop = Color(0x21FFFFFF), glassBottom = Color(0x0FFFFFFF), rimHi = Color(0x52FFFFFF), rimLo = Color(0x0DFFFFFF),
+    glassShadow = Color(0x4D000000),
 )
 
 val LocalPalette = staticCompositionLocalOf { Light }

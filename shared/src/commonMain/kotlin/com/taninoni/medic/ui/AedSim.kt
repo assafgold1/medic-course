@@ -37,6 +37,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -323,70 +326,110 @@ fun AedScreen(model: AppModel, nav: Nav) {
 
 @Composable
 private fun SimButton(text: String, bg: Color, fg: Color, modifier: Modifier, onClick: () -> Unit) {
+    val p = Pal
     Box(
-        modifier.heightIn(min = 52.dp).clip(RoundedCornerShape(16.dp)).background(bg).clickable(onClick = onClick).padding(horizontal = 12.dp, vertical = 12.dp),
+        modifier.heightIn(min = 54.dp).bouncy(onClick = onClick)
+            .glass(RoundedCornerShape(50), tint = if (bg == p.paper) Color.Unspecified else bg, elevation = 8.dp)
+            .padding(horizontal = 14.dp, vertical = 12.dp),
         contentAlignment = Alignment.Center,
     ) { Text(text, color = fg, fontWeight = FontWeight.Bold, fontSize = 15.5.sp, textAlign = TextAlign.Center) }
 }
 
-/** The device: grey body, LCD with prompt and ECG, green power button and a shock button that flashes when armed. */
+private val Lcd = Color(0xFF9BF5BD)
+private val LcdGlow = Color(0xFF34D27A)
+
+/**
+ * The device as a slab of frosted glass: a deep black screen with a glowing trace, a green power orb
+ * and a shock orb that sits dark until the device arms, then burns orange and pulses.
+ */
 @Composable
 private fun AedDevice(
     phase: Phase, prompt: String, rhythm: Rhythm, flash: Boolean, pads: String?,
     count: Int, breathing: Boolean, cprLeft: Int, onPower: () -> Unit, onShock: () -> Unit,
 ) {
+    val p = Pal
     val on = phase != Phase.OFF
     Column(
-        Modifier.fillMaxWidth().shadow(10.dp, RoundedCornerShape(34.dp)).clip(RoundedCornerShape(34.dp))
-            .background(Brush.verticalGradient(listOf(Color(0xFFF1F2F4), Color(0xFFD5D8DD))))
-            .border(2.dp, Color(0xFFB9BDC4), RoundedCornerShape(34.dp)).padding(18.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+        Modifier.fillMaxWidth().deepGlass(RoundedCornerShape(38.dp), elevation = 24.dp).padding(18.dp),
+        verticalArrangement = Arrangement.spacedBy(18.dp),
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("AED", color = Color(0xFFB91C1C), fontWeight = FontWeight.Black, fontSize = 22.sp)
-            Text("  דפיברילטור חצי-אוטומטי", color = Color(0xFF4B5563), fontSize = 13.sp, modifier = Modifier.weight(1f))
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Text("AED", fontWeight = FontWeight.Black, fontSize = 24.sp, style = androidx.compose.ui.text.TextStyle(brush = Brush.linearGradient(listOf(p.bandA, p.bandB))))
+            Text("דפיברילטור חצי-אוטומטי", color = p.muted, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
             // Status light: blinking green while idle means the device is ready.
             var blink by remember { mutableStateOf(true) }
             LaunchedEffect(on) { while (!on) { blink = !blink; delay(900) }; blink = true }
-            Box(Modifier.size(12.dp).clip(CircleShape).background(if (!on && blink) Color(0xFF22C55E) else if (on) Color(0xFF16A34A) else Color(0xFF9CA3AF)))
+            val lit = on || blink
+            Box(
+                Modifier.size(22.dp).background(Brush.radialGradient(listOf(LcdGlow.copy(alpha = if (lit) .55f else 0f), Color.Transparent)), CircleShape),
+                contentAlignment = Alignment.Center,
+            ) { Box(Modifier.size(10.dp).clip(CircleShape).background(if (lit) LcdGlow else p.muted.copy(alpha = .4f))) }
         }
-        // LCD
+        // Screen: black glass with a soft green bloom behind the text and trace.
         Column(
-            Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(Color(0xFF0B1A12)).border(3.dp, Color(0xFF374151), RoundedCornerShape(16.dp)).padding(14.dp),
+            Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp))
+                .background(Brush.verticalGradient(listOf(Color(0xFF07110C), Color(0xFF0B1E15))))
+                .background(Brush.radialGradient(listOf(LcdGlow.copy(alpha = if (on) .16f else .05f), Color.Transparent)))
+                .border(1.dp, Brush.verticalGradient(listOf(Color.White.copy(alpha = .22f), Color.White.copy(alpha = .04f))), RoundedCornerShape(22.dp))
+                .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Row {
-                Text(if (on && pads != null) (if (pads == "child") "50J · מדבקות ילד" else "150J · מדבקות מבוגר") else "", color = Color(0xFF86EFAC), fontSize = 13.sp, modifier = Modifier.weight(1f))
-                if (phase == Phase.CPR) Text("${cprLeft / 60}:${(cprLeft % 60).toString().padStart(2, '0')}", color = Color(0xFF86EFAC), fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                Text(if (on && pads != null) (if (pads == "child") "50J · מדבקות ילד" else "150J · מדבקות מבוגר") else "", color = Lcd.copy(alpha = .75f), fontSize = 13.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                if (phase == Phase.CPR) Text("${cprLeft / 60}:${(cprLeft % 60).toString().padStart(2, '0')}", color = Lcd, fontSize = 13.sp, fontWeight = FontWeight.Bold)
             }
             Text(
                 if (phase == Phase.CPR) (if (breathing) "הנשמה" else "לחיצה $count מתוך 30") else prompt,
-                color = Color(0xFFDCFCE7), fontSize = 19.sp, fontWeight = FontWeight.Bold, lineHeight = 26.sp,
+                color = Color(0xFFE6FFF0), fontSize = 19.sp, fontWeight = FontWeight.Bold, lineHeight = 26.sp,
                 modifier = Modifier.fillMaxWidth().heightIn(min = 54.dp),
             )
             Ecg(phase, rhythm, Modifier.fillMaxWidth().height(70.dp))
         }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Box(
-                    Modifier.size(84.dp).shadow(if (on) 4.dp else 10.dp, CircleShape).clip(CircleShape)
-                        .background(Brush.radialGradient(listOf(Color(0xFF4ADE80), Color(0xFF15803D))))
-                        .border(4.dp, Color(0xFFE5E7EB), CircleShape).clickable(onClick = onPower),
-                    contentAlignment = Alignment.Center,
-                ) { Text("⏻", color = Color.White, fontSize = 34.sp, fontWeight = FontWeight.Bold) }
-                Text(if (on) "כיבוי" else "הפעלה", color = Color(0xFF374151), fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+            Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Orb(Brush.radialGradient(listOf(Color(0xFF6EF0A2), Color(0xFF17A257))), glow = Color(0xFF2FD07A), glowing = !on, onClick = onPower) {
+                    Text("⏻", color = Color.White, fontSize = 34.sp, fontWeight = FontWeight.Bold)
+                }
+                Text(if (on) "כיבוי" else "הפעלה", color = p.ink, fontSize = 13.5.sp, fontWeight = FontWeight.Bold)
             }
-            Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 val armed = phase == Phase.READY
-                Box(
-                    Modifier.size(84.dp).shadow(if (armed && flash) 18.dp else 6.dp, CircleShape).clip(CircleShape)
-                        .background(if (armed && flash) Color(0xFFFF7A1A) else if (armed) Color(0xFFC2410C) else Color(0xFF9A6B4F))
-                        .border(4.dp, Color(0xFFE5E7EB), CircleShape).clickable(enabled = armed, onClick = onShock),
-                    contentAlignment = Alignment.Center,
-                ) { Icon(Icons.dev, "שוק", tint = Color.White, modifier = Modifier.size(40.dp)) }
-                Text("שוק", color = Color(0xFF374151), fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                Orb(
+                    if (armed) Brush.radialGradient(listOf(if (flash) Color(0xFFFFB061) else p.bandA, p.bandB)) else null,
+                    glow = p.bandB, glowing = armed, enabled = armed, onClick = onShock,
+                ) { Icon(Icons.dev, "שוק", tint = if (armed) Color.White else p.muted, modifier = Modifier.size(40.dp)) }
+                Text("שוק", color = if (armed) p.ink else p.muted, fontSize = 13.5.sp, fontWeight = FontWeight.Bold)
             }
         }
+    }
+}
+
+/** A round device button: a glowing jelly orb when [fill] is set (with a pulsing halo while [glowing]), plain glass when not. */
+@Composable
+private fun Orb(fill: Brush?, glow: Color, glowing: Boolean, enabled: Boolean = true, onClick: () -> Unit, content: @Composable () -> Unit) {
+    val pulse = androidx.compose.animation.core.rememberInfiniteTransition()
+    val k by pulse.animateFloat(
+        0f, 1f,
+        androidx.compose.animation.core.infiniteRepeatable(androidx.compose.animation.core.tween(1300), androidx.compose.animation.core.RepeatMode.Restart),
+    )
+    Box(Modifier.size(112.dp), contentAlignment = Alignment.Center) {
+        if (glowing && fill != null) Box(
+            Modifier.size(88.dp).graphicsLayer { val sc = 1f + .32f * k; scaleX = sc; scaleY = sc; alpha = (1f - k) * .7f }
+                .background(Brush.radialGradient(listOf(glow.copy(alpha = .8f), glow.copy(alpha = 0f))), CircleShape),
+        )
+        val shape = CircleShape
+        Box(
+            Modifier.size(86.dp).bouncy(enabled = enabled, onClick = onClick)
+                .then(
+                    if (fill != null) Modifier.shadow(18.dp, shape, ambientColor = glow, spotColor = glow).clip(shape).background(fill)
+                        .drawBehind {
+                            drawCircle(Brush.verticalGradient(listOf(Color.White.copy(alpha = .5f), Color.Transparent), endY = size.height * .55f), radius = size.minDimension * .44f, center = androidx.compose.ui.geometry.Offset(center.x, size.height * .36f))
+                        }
+                        .border(1.5.dp, Brush.verticalGradient(listOf(Color.White.copy(alpha = .8f), Color.White.copy(alpha = .1f))), shape)
+                    else Modifier.liquidGlass(shape, frost = .7f),
+                ),
+            contentAlignment = Alignment.Center,
+        ) { content() }
     }
 }
 
@@ -416,7 +459,8 @@ private fun Ecg(phase: Phase, rhythm: Rhythm, modifier: Modifier) {
             val yy = (mid - y * h * .45).toFloat()
             if (i == 0) path.moveTo(x, yy) else path.lineTo(x, yy)
         }
-        drawPath(path, Color(0xFF4ADE80), style = Stroke(2.5.dp.toPx()))
+        drawPath(path, LcdGlow.copy(alpha = .25f), style = Stroke(9.dp.toPx(), cap = androidx.compose.ui.graphics.StrokeCap.Round))
+        drawPath(path, Lcd, style = Stroke(2.5.dp.toPx(), cap = androidx.compose.ui.graphics.StrokeCap.Round))
     }
 }
 

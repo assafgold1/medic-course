@@ -80,7 +80,6 @@ private val FlameTop = Color(0xFFFFD43B)
 private val FlameMid = Color(0xFFFF8A1F)
 private val FlameLow = Color(0xFFFF3D3D)
 private val Ice = Color(0xFF4FB8F2)
-private val FlameBrush get() = Brush.verticalGradient(listOf(FlameTop, FlameMid, FlameLow))
 
 private val DAY_LETTERS = listOf("א", "ב", "ג", "ד", "ה", "ו", "ש")
 private val MONTHS = listOf("ינואר", "פברואר", "מרץ", "אפריל", "מאי", "יוני", "יולי", "אוגוסט", "ספטמבר", "אוקטובר", "נובמבר", "דצמבר")
@@ -187,14 +186,13 @@ private fun DayBubble(met: Boolean, frozen: Boolean, isToday: Boolean, future: B
     Box(Modifier.size(size), contentAlignment = Alignment.Center) {
         // The empty slot sits underneath, so a revealed day pops out of it.
         Box(
-            Modifier.size(size).clip(CircleShape)
-                .background(if (future) p.hair.copy(alpha = p.hair.alpha * .6f) else p.hair)
-                .then(if (isToday) Modifier.border(2.dp, Brush.linearGradient(listOf(FlameMid, FlameLow)), CircleShape) else Modifier),
+            Modifier.size(size).liquidGlass(CircleShape, clear = true)
+                .then(if (isToday) Modifier.border(2.dp, p.blue, CircleShape) else Modifier),
         )
         if (met || frozen) Box(
             Modifier.size(size).graphicsLayer { scaleX = pop.value; scaleY = pop.value; alpha = pop.value.coerceIn(0f, 1f) }
                 .clip(CircleShape)
-                .background(if (met) FlameBrush else Brush.linearGradient(listOf(Ice.copy(alpha = .85f), Ice)))
+                .background(if (met) Brush.linearGradient(listOf(p.bandA, p.bandB)) else Brush.linearGradient(listOf(Ice.copy(alpha = .85f), Ice)))
                 .border(1.dp, Color.White.copy(alpha = .45f), CircleShape),
             contentAlignment = Alignment.Center,
         ) {
@@ -214,8 +212,8 @@ fun StreakCard(model: AppModel, modifier: Modifier = Modifier, onClick: () -> Un
     val risk = model.streakAtRisk
     Column(
         modifier.bouncy(pressedScale = .98f, onClick = onClick)
-            .glass(RoundedCornerShape(30.dp), tint = if (risk) FlameMid.copy(alpha = if (p.dark) .1f else .08f) else Color.Unspecified, elevation = 14.dp)
-            .then(if (risk) Modifier.border(1.5.dp, Brush.linearGradient(listOf(FlameTop.copy(alpha = .8f), FlameLow.copy(alpha = .6f))), RoundedCornerShape(30.dp)) else Modifier)
+            .deepGlass(RoundedCornerShape(32.dp), elevation = 20.dp)
+            .then(if (risk) Modifier.border(1.5.dp, p.blue.copy(alpha = .55f), RoundedCornerShape(30.dp)) else Modifier)
             .padding(18.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
@@ -225,7 +223,7 @@ fun StreakCard(model: AppModel, modifier: Modifier = Modifier, onClick: () -> Un
                 Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text(
                         "$streak", fontSize = 34.sp, lineHeight = 36.sp, fontWeight = FontWeight.Black,
-                        style = TextStyle(brush = if (streak > 0) Brush.verticalGradient(listOf(FlameMid, FlameLow)) else Brush.linearGradient(listOf(p.muted, p.muted))),
+                        style = TextStyle(brush = if (streak > 0) Brush.verticalGradient(listOf(p.bandA, p.bandB)) else Brush.linearGradient(listOf(p.muted, p.muted))),
                     )
                     Text(if (streak == 1) "יום ברצף" else "ימים ברצף", color = p.ink, fontSize = 16.sp, fontWeight = FontWeight.ExtraBold, modifier = Modifier.padding(bottom = 4.dp))
                 }
@@ -235,7 +233,7 @@ fun StreakCard(model: AppModel, modifier: Modifier = Modifier, onClick: () -> Un
                         risk -> "עוד ${model.leftToday} שאלות ושמרת על הרצף"
                         else -> "ענה על ${model.dailyGoal} שאלות כדי להדליק את הרצף"
                     },
-                    color = when { done -> p.good; risk -> if (p.dark) FlameTop else FlameLow; else -> p.muted },
+                    color = when { done -> p.blue; risk -> p.bad; else -> p.muted },
                     fontSize = 13.5.sp, fontWeight = FontWeight.Bold, lineHeight = 18.sp,
                 )
             }
@@ -252,7 +250,7 @@ fun StreakCard(model: AppModel, modifier: Modifier = Modifier, onClick: () -> Un
                 Text("היום", color = p.muted, fontSize = 12.5.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
                 Text("${model.todayCount}/${model.dailyGoal}", color = p.ink, fontSize = 12.5.sp, fontWeight = FontWeight.ExtraBold)
             }
-            ProgressBar(model.todayCount.toFloat() / model.dailyGoal, FlameMid)
+            ProgressBar(model.todayCount.toFloat() / model.dailyGoal, p.blue)
         }
         WeekStrip(model)
     }
@@ -272,7 +270,7 @@ fun StreakScreen(model: AppModel, nav: Nav) {
             Flame(120.dp, lit = model.doneToday || streak > 0)
             Text(
                 "$streak", fontSize = 64.sp, lineHeight = 66.sp, fontWeight = FontWeight.Black,
-                style = TextStyle(brush = Brush.verticalGradient(listOf(FlameMid, FlameLow))),
+                style = TextStyle(brush = Brush.verticalGradient(listOf(p.bandA, p.bandB))),
             )
             Text(if (streak == 1) "יום ברצף" else "ימים ברצף", color = p.ink, fontSize = 19.sp, fontWeight = FontWeight.ExtraBold)
             Text(
@@ -292,18 +290,18 @@ fun StreakScreen(model: AppModel, nav: Nav) {
         }
 
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            StatTile("שיא אישי", daysWord(model.longestStreak), Icons.trophy, FlameMid, Modifier.weight(1f))
+            StatTile("שיא אישי", daysWord(model.longestStreak), Icons.trophy, p.blue, Modifier.weight(1f))
             StatTile("הקפאות", "${model.freezes} מתוך 2", Icons.snow, Ice, Modifier.weight(1f))
-            StatTile("ימי תרגול", "${model.metDays.size}", Icons.check, p.good, Modifier.weight(1f))
+            StatTile("ימי תרגול", "${model.metDays.size}", Icons.check, p.blue, Modifier.weight(1f))
         }
 
         MonthCalendar(model)
 
         SectionTitle("יעד יומי")
         Panel {
-            Text("כמה שאלות ביום שומרות על הרצף?", color = p.muted, fontSize = 14.sp)
+            Text("כמה שאלות ביום שומרות על הרצף? 5 קליל, 10 רגיל, 20 רציני, 40 אינטנסיבי.", color = p.muted, fontSize = 14.sp, lineHeight = 20.sp)
             Segmented(
-                listOf(5 to "קליל · 5", 10 to "רגיל · 10", 20 to "רציני · 20", 40 to "אינטנסיבי · 40").map { it.first.toString() to it.second },
+                listOf(5, 10, 20, 40).map { it.toString() to it.toString() },
                 model.dailyGoal.toString(),
             ) { model.setGoal(it.toInt()) }
         }
@@ -314,7 +312,7 @@ fun StreakScreen(model: AppModel, nav: Nav) {
                 Modifier.fillMaxWidth().bouncy(pressedScale = .98f) { model.setReminder(!model.reminderOn) },
                 verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                IconTile(Icons.bell, FlameMid, size = 40.dp)
+                IconTile(Icons.bell, p.blue, size = 40.dp)
                 Column(Modifier.weight(1f)) {
                     Text("תזכיר לי לתרגל", color = p.ink, fontSize = 16.sp, fontWeight = FontWeight.Bold)
                     Text("התראה כל יום עד שהיעד הושלם, ועוד אחת ב-22:30 אם הרצף בסכנה", color = p.muted, fontSize = 13.sp, lineHeight = 18.sp)
@@ -410,12 +408,12 @@ private fun MonthCalendar(model: AppModel) {
                                 Modifier.fillMaxSize().clip(CircleShape)
                                     .then(
                                         when {
-                                            met -> Modifier.background(FlameBrush)
+                                            met -> Modifier.background(Brush.linearGradient(listOf(p.bandA, p.bandB)))
                                             frozen -> Modifier.background(Ice)
                                             else -> Modifier
                                         },
                                     )
-                                    .then(if (isToday && !met) Modifier.border(2.dp, Brush.linearGradient(listOf(FlameMid, FlameLow)), CircleShape) else Modifier),
+                                    .then(if (isToday && !met) Modifier.border(2.dp, p.blue, CircleShape) else Modifier),
                                 contentAlignment = Alignment.Center,
                             ) {
                                 Text(
@@ -459,7 +457,7 @@ fun StreakOverlays(model: AppModel, nav: Nav) {
                 "ממשיכים", onGo = { model.dismissStreakNotice() },
             )
             is StreakNotice.Lost -> NoticeDialog(
-                Icons.flame, FlameLow, "הרצף נכבה",
+                Icons.flame, Pal.blue, "הרצף נכבה",
                 "הרצף של ${daysWord(notice.days)} נגמר. כל רצף גדול מתחיל מחדש ביום אחד, ואפשר להדליק אותו כבר היום.",
                 "מתחילים מחדש",
                 onGo = {
@@ -546,7 +544,7 @@ private fun CelebrationView(model: AppModel, c: Celebration) {
             ) { n ->
                 Text(
                     "$n", fontSize = 84.sp, lineHeight = 88.sp, fontWeight = FontWeight.Black,
-                    style = TextStyle(brush = Brush.verticalGradient(listOf(FlameTop, FlameMid, FlameLow))),
+                    style = TextStyle(brush = Brush.verticalGradient(listOf(p.bandA, p.bandB))),
                 )
             }
             Text(if (c.streak == 1) "הרצף התחיל!" else "ימים ברצף!", color = p.ink, fontSize = 28.sp, fontWeight = FontWeight.Black)
@@ -565,7 +563,7 @@ private fun CelebrationView(model: AppModel, c: Celebration) {
                 Modifier.widthIn(max = 420.dp).fillMaxWidth().glass(RoundedCornerShape(22.dp), elevation = 4.dp).padding(14.dp),
                 verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                IconTile(Icons.bell, FlameMid, size = 40.dp)
+                IconTile(Icons.bell, p.blue, size = 40.dp)
                 Column(Modifier.weight(1f)) {
                     Text("שנזכיר לך מחר?", color = p.ink, fontSize = 15.sp, fontWeight = FontWeight.Bold)
                     Text("התראה יומית שלא תשבור את הרצף", color = p.muted, fontSize = 13.sp)
