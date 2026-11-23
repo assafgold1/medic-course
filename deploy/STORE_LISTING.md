@@ -11,8 +11,8 @@ Use the same text in App Store Connect and Google Play Console.
 | Category | Education (secondary: Medical) |
 | Age rating | 12+ (App Store: infrequent medical/treatment information) / Teen on Play |
 | Price | Free, no in-app purchases, no ads |
-| Privacy policy URL | https://assafgold1.github.io/medic-course/privacy.html |
-| Support URL | https://assafgold1.github.io/medic-course/ |
+| Privacy policy URL | https://uh.taninoni.com/privacy.html |
+| Support URL | https://uh.taninoni.com/ |
 | Primary language | Hebrew |
 
 ## Description

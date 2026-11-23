@@ -65,7 +65,7 @@ Main features after signing in:
 - **Defibrillator (דפיברילטור tab):** press the green button and follow the voice and on-screen prompts.
 - **Numbers (מספרים tab):** reference tables.
 - **Settings (הגדרות tab):** the account, the streak and daily reminder, the theme and text size. Instructors also see "התקדמות החניכים" (student progress).
-- **Account deletion:** Settings → חשבון וסנכרון (Account and sync) → מחיקת חשבון (Delete account). This immediately and permanently deletes the account and all its data (progress, friends) from our server. It's also described at [[privacy URL]]#delete.
+- **Account deletion:** Settings → חשבון וסנכרון (Account and sync) → מחיקת חשבון (Delete account). This immediately and permanently deletes the account and all its data (progress, friends) from our server. It's also described at https://uh.taninoni.com/privacy.html#delete.
 
 **Friends (חברים card on Home) and user safety:** each user has a private 6-character code. A friendship exists only when one user enters the other's code, which they have to receive directly from that person. Users can't search or browse other users. Friends see only each other's display name, organisation and study statistics (streak, questions this week, mastery %). The app has no messaging, posts or free-text content between users.
 - To try it, sign in as the student demo account: it's already friends with the instructor demo account and with a spare account.
@@ -73,7 +73,7 @@ Main features after signing in:
 - **Block:** removes both users from each other's boards, and the blocked user can't add you again.
 - **Report:** you pick a reason and can add details. The report is stored on our server for review, and the reported user is blocked at once.
 - We review reports within 24 hours, and rename or remove offending names and accounts.
-- The rules (no offensive, misleading or impersonating names) and a support email for reports are on our privacy page: [[privacy URL]]#friends.
+- The rules (no offensive, misleading or impersonating names) and a support email for reports are on our privacy page: https://uh.taninoni.com/privacy.html#friends.
 
 There are no in-app purchases, subscriptions or ads, and no paid content.
 
