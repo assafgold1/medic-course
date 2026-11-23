@@ -7,6 +7,8 @@ import com.russhwolf.settings.Settings
 import com.taninoni.medic.ReminderItem
 import com.taninoni.medic.Reminders
 import com.taninoni.medic.SERVER_URL
+import com.taninoni.medic.WidgetBridge
+import com.taninoni.medic.WidgetData
 import com.taninoni.medic.nowMillis
 import com.taninoni.medic.utcOffsetMinutes
 import com.taninoni.medic.res.Res
@@ -115,6 +117,7 @@ class AppModel(private val scope: CoroutineScope) {
         if (now != today) today = now
         todayCount = if (settings.getLong(K_COUNT_DAY, -1L) == today) settings.getInt(K_TODAY_COUNT, 0) else 0
         checkMissedDays()
+        publishWidget()
     }
 
     private fun migrateStreak() {
@@ -151,6 +154,7 @@ class AppModel(private val scope: CoroutineScope) {
         todayCount++
         settings.putLong(K_COUNT_DAY, today); settings.putInt(K_TODAY_COUNT, todayCount)
         if (!doneToday && todayCount >= dailyGoal) completeToday()
+        publishWidget()
     }
 
     private fun completeToday() {
@@ -175,6 +179,7 @@ class AppModel(private val scope: CoroutineScope) {
         settings.putInt(K_FREEZES, 0); settings.putInt(K_LONGEST, 0); settings.putInt(K_TODAY_COUNT, 0)
         celebration = null; streakNotice = null
         stickers = emptyMap(); stickerOrder = emptyList(); pendingGifts = emptyList(); saveStickers()
+        review = emptyMap(); saveReview()
         scheduleReminders()
     }
 
@@ -245,7 +250,7 @@ class AppModel(private val scope: CoroutineScope) {
     fun dismissStreakNotice() { streakNotice = null }
 
     fun setGoal(goal: Int) {
-        dailyGoal = goal; settings.putInt(K_GOAL, goal)
+        dailyGoal = goal; settings.putInt(K_GOAL, goal); publishWidget()
         if (!doneToday && todayCount >= goal) completeToday() else scheduleReminders()
     }
 
@@ -337,6 +342,7 @@ class AppModel(private val scope: CoroutineScope) {
     fun seen(items: List<QItem>) = items.any { isAnswered(it.id) }
 
     fun recordAnswer(id: String, correct: Boolean) {
+        updateReview(id, correct)
         progress = progress.copy(answers = progress.answers + (id to Answer(if (correct) 1 else 0, nowMillis())), updatedAt = nowMillis())
         saveProgress()
         countAnswerToday()
@@ -416,6 +422,51 @@ class AppModel(private val scope: CoroutineScope) {
         return out.shuffled()
     }
 
+    /* ---------- spaced review: every mistake comes back after 1 day, then 3 days, then a week ---------- */
+
+    /** Question id -> its review stage and the local day it's due. Kept on this device. */
+    var review by mutableStateOf(readReview()); private set
+
+    private fun readReview(): Map<String, ReviewCard> =
+        settings.getStringOrNull(K_REVIEW)?.let { runCatching { api.json.decodeFromString<Map<String, ReviewCard>>(it) }.getOrNull() }.orEmpty()
+
+    private fun saveReview() { settings.putString(K_REVIEW, api.json.encodeToString(review)); publishWidget() }
+
+    /** Wrong answers that have no card yet (older ones, or synced from another device) are due now, at stage 1. */
+    private fun cardOf(id: String): ReviewCard? = review[id] ?: if (progress.answers[id]?.v == 0) ReviewCard(1, today) else null
+
+    private fun updateReview(id: String, correct: Boolean) {
+        refreshDay()
+        val card = cardOf(id)
+        review = when {
+            !correct -> review + (id to ReviewCard(1, today + REVIEW_DAYS[0]))
+            card == null || card.day > today -> return // not in review, or answered early: the schedule stays
+            card.stage >= REVIEW_DAYS.size -> review - id // got it right after a week: learned
+            else -> review + (id to ReviewCard(card.stage + 1, today + REVIEW_DAYS[card.stage]))
+        }
+        saveReview()
+    }
+
+    /** Questions due for review today, the most overdue first. */
+    fun reviewDue(): List<QItem> = allItems.mapNotNull { q -> cardOf(q.id)?.takeIf { it.day <= today }?.let { q to it } }
+        .sortedWith(compareBy({ it.second.day }, { it.second.stage })).map { it.first }
+
+    val reviewDueCount: Int get() = allItems.count { q -> cardOf(q.id)?.let { it.day <= today } == true }
+    /** How many come up tomorrow. */
+    val reviewTomorrow: Int get() = review.values.count { it.day == today + 1 }
+    /** Questions in review at each stage (1–3). */
+    fun reviewStages(): List<Int> {
+        val cards = allItems.mapNotNull { cardOf(it.id) }
+        return (1..REVIEW_DAYS.size).map { s -> cards.count { it.stage == s } }
+    }
+
+    /* ---------- home screen widget ---------- */
+
+    private fun publishWidget() {
+        if (content == null) return
+        WidgetBridge.publish(WidgetData(studyStreakDays, doneToday, todayCount, dailyGoal, reviewDueCount, today))
+    }
+
     /** Number of questions due now: wrong ones plus correct answers older than two weeks. */
     fun dueCount(): Int {
         val old = nowMillis() - 14 * 86_400_000L
@@ -428,7 +479,7 @@ class AppModel(private val scope: CoroutineScope) {
     /* home list: one chapter shown (null = all), and chapters folded away */
     var homeFilter by mutableStateOf(settings.getStringOrNull(K_HOME_FILTER)); private set
     var collapsedCats by mutableStateOf(settings.getStringOrNull(K_COLLAPSED)?.split(',')?.filter { it.isNotBlank() }?.toSet().orEmpty()); private set
-    fun setHomeFilter(cat: String?) { homeFilter = cat; if (cat == null) settings.remove(K_HOME_FILTER) else settings.putString(K_HOME_FILTER, cat) }
+    fun chooseHomeFilter(cat: String?) { homeFilter = cat; if (cat == null) settings.remove(K_HOME_FILTER) else settings.putString(K_HOME_FILTER, cat) }
     fun toggleCollapsed(cat: String) {
         collapsedCats = if (cat in collapsedCats) collapsedCats - cat else collapsedCats + cat
         settings.putString(K_COLLAPSED, collapsedCats.joinToString(","))
@@ -456,6 +507,7 @@ class AppModel(private val scope: CoroutineScope) {
     fun resetProgress() {
         progress = Progress(updatedAt = nowMillis(), resetAt = nowMillis())
         saveProgress()
+        review = emptyMap(); saveReview()
         scope.launch { sync() }
     }
 
@@ -537,11 +589,43 @@ class AppModel(private val scope: CoroutineScope) {
     /** After sign-out or deletion the next person on this device starts clean (their data comes from the server). */
     private fun clearLocal() {
         progress = Progress(); saveProgress(); settings.remove(K_OWNER)
+        review = emptyMap(); saveReview()
+        friends = null
         syncState = SyncState.Idle; syncMessage = ""
     }
 
+    /* ---------- friends ---------- */
+
+    /** The friends board (friends plus me), or null until it is loaded. */
+    var friends by mutableStateOf<FriendsResponse?>(null); private set
+    var friendsError by mutableStateOf<String?>(null); private set
+
+    suspend fun loadFriends() {
+        val t = token ?: return
+        runCatching { api.friends(t) }
+            .onSuccess { friends = it; friendsError = null }
+            .onFailure { friendsError = (it as? ApiException)?.message ?: "אין חיבור לשרת" }
+    }
+
+    /** Adds a friend by code; returns an error message, or null when it worked. */
+    suspend fun addFriend(code: String): String? = runCatching { api.addFriend(requireToken(), code.trim()) }
+        .fold({ friends = it; null }, { (it as? ApiException)?.message ?: "אין חיבור לשרת" })
+
+    suspend fun removeFriend(id: Long) {
+        runCatching { api.removeFriend(requireToken(), id) }.onSuccess { loadFriends() }
+    }
+
+    /** Blocks a friend: they leave the board and can't add you again. Returns an error message, or null. */
+    suspend fun blockFriend(id: Long): String? = runCatching { api.blockFriend(requireToken(), id) }
+        .fold({ loadFriends(); null }, { (it as? ApiException)?.message ?: "אין חיבור לשרת" })
+
+    /** Reports a friend for review and blocks them. Returns an error message, or null. */
+    suspend fun reportFriend(id: Long, reason: String): String? = runCatching { api.reportFriend(requireToken(), id, reason) }
+        .fold({ loadFriends(); null }, { (it as? ApiException)?.message ?: "אין חיבור לשרת" })
+
     suspend fun sync() {
         val t = token ?: return
+        api.putStats(t, studyStreakDays, today)
         syncState = SyncState.Working
         runCatching { api.syncProgress(t, progress) }
             .onSuccess { merged ->
@@ -592,6 +676,9 @@ class AppModel(private val scope: CoroutineScope) {
         const val K_REMIND = "reminder_on"
         const val K_REMIND_AT = "reminder_minute"
         const val K_REMIND_ASKED = "reminder_asked"
+        const val K_REVIEW = "review_cards"
+        /** Days until the next review after stage 1, 2 and 3. */
+        val REVIEW_DAYS = listOf(1, 3, 7)
         const val DAY_MS = 86_400_000L
         const val MAX_FREEZES = 2
         const val LAST_CALL_MINUTE = 22 * 60 + 30

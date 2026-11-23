@@ -58,6 +58,7 @@ sealed interface Screen {
     data class ProtocolView(val id: String) : Screen
     data object Streak : Screen
     data object Stickers : Screen
+    data object Friends : Screen
     data object Account : Screen
     data object Settings : Screen
     data object Instructor : Screen
@@ -82,13 +83,17 @@ class Nav {
 }
 
 /** Bottom bar tabs, in RTL order (first is rightmost). */
-data class Tab(val screen: Screen, val label: String, val icon: androidx.compose.ui.graphics.vector.ImageVector)
+data class Tab(
+    val screen: Screen, val label: String,
+    val icon: androidx.compose.ui.graphics.vector.ImageVector,
+    val iconOn: androidx.compose.ui.graphics.vector.ImageVector,
+)
 val TABS = listOf(
-    Tab(Screen.Home, "נושאים", Icons.basics),
-    Tab(Screen.Picker, "תרגול", Icons.check),
-    Tab(Screen.Aed, "דפיברילטור", Icons.dev),
-    Tab(Screen.Reference, "מספרים", Icons.hash),
-    Tab(Screen.Settings, "הגדרות", Icons.gear),
+    Tab(Screen.Home, "נושאים", TabIcons.learn, TabIcons.learnOn),
+    Tab(Screen.Picker, "תרגול", TabIcons.practice, TabIcons.practiceOn),
+    Tab(Screen.Aed, "דפיברילטור", TabIcons.aed, TabIcons.aedOn),
+    Tab(Screen.Reference, "מספרים", TabIcons.numbers, TabIcons.numbersOn),
+    Tab(Screen.Settings, "הגדרות", TabIcons.settings, TabIcons.settingsOn),
 )
 
 /** Lets the Android activity route the system back button into the app. */
@@ -111,6 +116,19 @@ fun App() {
     FeedbackPrefs.sound = model.soundOn
     FeedbackPrefs.haptics = model.hapticsOn
     AppBack.handler = { if (ViewerState.isOpen) { ViewerState.close(); true } else nav.back() }
+    // Links from the home screen widget, handled once the app is ready.
+    val link = com.taninoni.medic.DeepLink.pending
+    LaunchedEffect(link, model.user != null, model.content != null) {
+        if (link == null || model.user == null || model.content == null) return@LaunchedEffect
+        com.taninoni.medic.DeepLink.pending = null
+        ViewerState.close()
+        nav.home()
+        when (link) {
+            "quick" -> nav.go(Screen.Quiz(model.smartPick(5), QuizConfig("5 שאלות מהירות", "smart", instant = true)))
+            "review" -> model.reviewDue().takeIf { it.isNotEmpty() }?.let { nav.go(Screen.Quiz(it.take(40), QuizConfig("חזרה יומית", "review", instant = true))) }
+                ?: nav.tab(Screen.Picker)
+        }
+    }
 
     MedicTheme(model.themeMode) {
         val density = LocalDensity.current
@@ -160,6 +178,7 @@ fun App() {
                             is Screen.ProtocolView -> ProtocolScreen(model, nav, s.id)
                             Screen.Streak -> StreakScreen(model, nav)
                             Screen.Stickers -> StickersScreen(model, nav)
+                            Screen.Friends -> FriendsScreen(model, nav)
                             Screen.Account -> AccountScreen(model, nav)
                             Screen.Settings -> SettingsScreen(model, nav)
                             Screen.Instructor -> InstructorScreen(model, nav)

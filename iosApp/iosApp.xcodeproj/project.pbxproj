@@ -9,13 +9,44 @@
 /* Begin PBXBuildFile section */
 		22EA1CB33A17DCC6FC82406D /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F543015C899423D4B01CEB2E /* Assets.xcassets */; };
 		307C2654CD5972A25FB7FD87 /* iOSApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 668CECA83ACC03A83C85A623 /* iOSApp.swift */; };
+		A1C0DE0000000000000000A2 /* MedicWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1C0DE0000000000000000A1 /* MedicWidget.swift */; };
+		A1C0DE0000000000000000A7 /* MedicWidget.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = A1C0DE0000000000000000A6 /* MedicWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		A1C0DE0000000000000000B1 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 242FB5348943441C388468CE /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = A1C0DE0000000000000000AA;
+			remoteInfo = MedicWidget;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		A1C0DE0000000000000000A8 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				A1C0DE0000000000000000A7 /* MedicWidget.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		668CECA83ACC03A83C85A623 /* iOSApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = iOSApp.swift; sourceTree = "<group>"; };
 		86038AE1032E284E79B32AD6 /* iosApp.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = iosApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		C117AD187833E2513BD2F553 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		F543015C899423D4B01CEB2E /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		A1C0DE0000000000000000A1 /* MedicWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MedicWidget.swift; sourceTree = "<group>"; };
+		A1C0DE0000000000000000A3 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		A1C0DE0000000000000000A4 /* MedicWidget.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = MedicWidget.entitlements; sourceTree = "<group>"; };
+		A1C0DE0000000000000000A5 /* Medic.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Medic.entitlements; sourceTree = "<group>"; };
+		A1C0DE0000000000000000A6 /* MedicWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = MedicWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -25,6 +56,7 @@
 				F543015C899423D4B01CEB2E /* Assets.xcassets */,
 				C117AD187833E2513BD2F553 /* Info.plist */,
 				668CECA83ACC03A83C85A623 /* iOSApp.swift */,
+				A1C0DE0000000000000000A5 /* Medic.entitlements */,
 			);
 			path = iosApp;
 			sourceTree = "<group>";
@@ -33,6 +65,7 @@
 			isa = PBXGroup;
 			children = (
 				1DB4B685CAEE8BEFEBBAEF94 /* iosApp */,
+				A1C0DE0000000000000000A9 /* MedicWidget */,
 				94C98B8B3A2BFC1966447269 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -41,8 +74,19 @@
 			isa = PBXGroup;
 			children = (
 				86038AE1032E284E79B32AD6 /* iosApp.app */,
+				A1C0DE0000000000000000A6 /* MedicWidget.appex */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		A1C0DE0000000000000000A9 /* MedicWidget */ = {
+			isa = PBXGroup;
+			children = (
+				A1C0DE0000000000000000A1 /* MedicWidget.swift */,
+				A1C0DE0000000000000000A3 /* Info.plist */,
+				A1C0DE0000000000000000A4 /* MedicWidget.entitlements */,
+			);
+			path = MedicWidget;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -55,10 +99,12 @@
 				B6D1748BF05B24DE1D91D4DB /* Build Kotlin shared framework */,
 				297B59D9CE634556D6007C40 /* Sources */,
 				1623B02D10928C8101C1F806 /* Resources */,
+				A1C0DE0000000000000000A8 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				A1C0DE0000000000000000B2 /* PBXTargetDependency */,
 			);
 			name = iosApp;
 			packageProductDependencies = (
@@ -67,7 +113,42 @@
 			productReference = 86038AE1032E284E79B32AD6 /* iosApp.app */;
 			productType = "com.apple.product-type.application";
 		};
+		A1C0DE0000000000000000AA /* MedicWidget */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A1C0DE0000000000000000AE /* Build configuration list for PBXNativeTarget "MedicWidget" */;
+			buildPhases = (
+				A1C0DE0000000000000000AB /* Sources */,
+				A1C0DE0000000000000000AC /* Frameworks */,
+				A1C0DE0000000000000000AD /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = MedicWidget;
+			productName = MedicWidget;
+			productReference = A1C0DE0000000000000000A6 /* MedicWidget.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 /* End PBXNativeTarget section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		A1C0DE0000000000000000AC /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		A1C0DE0000000000000000B2 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = A1C0DE0000000000000000AA /* MedicWidget */;
+			targetProxy = A1C0DE0000000000000000B1 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin PBXProject section */
 		242FB5348943441C388468CE /* Project object */ = {
@@ -77,6 +158,10 @@
 				LastUpgradeCheck = 1430;
 				TargetAttributes = {
 					78B53CC79860CBFC2F5543C6 = {
+						DevelopmentTeam = FUFZYJG8V3;
+						ProvisioningStyle = Automatic;
+					};
+					A1C0DE0000000000000000AA = {
 						DevelopmentTeam = FUFZYJG8V3;
 						ProvisioningStyle = Automatic;
 					};
@@ -97,6 +182,7 @@
 			projectRoot = "";
 			targets = (
 				78B53CC79860CBFC2F5543C6 /* iosApp */,
+				A1C0DE0000000000000000AA /* MedicWidget */,
 			);
 		};
 /* End PBXProject section */
@@ -107,6 +193,13 @@
 			buildActionMask = 2147483647;
 			files = (
 				22EA1CB33A17DCC6FC82406D /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A1C0DE0000000000000000AD /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -140,6 +233,14 @@
 			buildActionMask = 2147483647;
 			files = (
 				307C2654CD5972A25FB7FD87 /* iOSApp.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A1C0DE0000000000000000AB /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A1C0DE0000000000000000A2 /* MedicWidget.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -275,6 +376,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = iosApp/Medic.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
@@ -297,6 +399,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = iosApp/Medic.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
@@ -311,6 +414,50 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.taninoni.medic;
 				PRODUCT_NAME = Medic;
 				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+		A1C0DE0000000000000000AF /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_ENTITLEMENTS = MedicWidget/MedicWidget.entitlements;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_STYLE = Automatic;
+				"EXCLUDED_ARCHS[sdk=iphonesimulator*]" = x86_64;
+				INFOPLIST_FILE = MedicWidget/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.taninoni.medic.widget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		A1C0DE0000000000000000B0 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_ENTITLEMENTS = MedicWidget/MedicWidget.entitlements;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_STYLE = Automatic;
+				"EXCLUDED_ARCHS[sdk=iphonesimulator*]" = x86_64;
+				INFOPLIST_FILE = MedicWidget/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.taninoni.medic.widget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
 				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Release;
@@ -332,6 +479,15 @@
 			buildConfigurations = (
 				6C824A6EB4BAD43AE2A4BB29 /* Debug */,
 				11814011E7D6EC822BFBC66D /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		A1C0DE0000000000000000AE /* Build configuration list for PBXNativeTarget "MedicWidget" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A1C0DE0000000000000000AF /* Debug */,
+				A1C0DE0000000000000000B0 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;

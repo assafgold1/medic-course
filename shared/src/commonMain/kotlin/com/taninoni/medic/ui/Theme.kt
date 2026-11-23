@@ -10,6 +10,7 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.PathFillType
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
@@ -93,7 +94,35 @@ private fun icon(name: String, vararg paths: String): ImageVector =
         }
     }.build()
 
+/** A filled icon; with even-odd filling, a shape inside another cuts a hole in it. */
+private fun solid(name: String, vararg paths: String): ImageVector =
+    ImageVector.Builder(name, 24.dp, 24.dp, 24f, 24f).apply {
+        paths.forEach { addPath(pathData = addPathNodes(it), fill = SolidColor(Color.Black), pathFillType = PathFillType.EvenOdd) }
+    }.build()
+
+private const val GEAR_OUTER = "M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"
+private const val HEART = "M12 20.5s-8-4.9-8-10.9A4.6 4.6 0 0 1 12 6.8a4.6 4.6 0 0 1 8 2.8c0 6-8 10.9-8 10.9z"
+private const val BOARD = "M6.5 4.5h11A1.5 1.5 0 0 1 19 6v13.5a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 5 19.5V6a1.5 1.5 0 0 1 1.5-1.5z"
+private const val SHEET = "M5.5 4h13A1.5 1.5 0 0 1 20 5.5v13a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 18.5v-13A1.5 1.5 0 0 1 5.5 4z"
+
+/** Tab bar icons: an outline for resting tabs and a filled twin for the selected one. */
+object TabIcons {
+    val learn = Icons.make("tab-learn", "M12 6.6C10 5.1 7.4 4.6 3.8 4.6v14c3.6 0 6.2.5 8.2 2 2-1.5 4.6-2 8.2-2v-14c-3.6 0-6.2.5-8.2 2z", "M12 6.6v13.8")
+    val learnOn = solid("tab-learn-on", "M12 6.6C10 5.1 7.4 4.6 3.8 4.6v14c3.6 0 6.2.5 8.2 2 2-1.5 4.6-2 8.2-2v-14c-3.6 0-6.2.5-8.2 2zM11.35 7.4h1.3v12.2h-1.3z")
+    val practice = Icons.make("tab-practice", BOARD, "M9.2 3h5.6v3.2H9.2z", "M9 13.4l2.1 2.1 4-4.4")
+    val practiceOn = solid("tab-practice-on", BOARD + "M8.3 13.9l1.1-1.1 1.7 1.7 3.5-3.9 1.1 1-4.6 5.1z", "M9.2 2.4h5.6v3.4H9.2z")
+    val aed = Icons.make("tab-aed", HEART, "M12.9 9.4 10.4 13.2h3.2l-2.5 3.8")
+    val aedOn = solid("tab-aed-on", HEART + "M13.4 8.6 9.4 13.9h2.7l-1.1 3.7 4.1-5.4h-2.7z")
+    val numbers = Icons.make("tab-numbers", SHEET, "M8 9h8M8 12h8M8 15h5")
+    val numbersOn = solid("tab-numbers-on", SHEET + "M7.4 8.3h9.2v1.4H7.4zM7.4 11.3h9.2v1.4H7.4zM7.4 14.3h5.6v1.4H7.4z")
+    val settings = Icons.gear
+    val settingsOn = solid("tab-settings-on", GEAR_OUTER + "M14.6 12a2.6 2.6 0 1 1-5.2 0a2.6 2.6 0 1 1 5.2 0z")
+}
+
 object Icons {
+    /** Outline icon from path data, for icons defined outside this object. */
+    fun make(name: String, vararg paths: String) = icon(name, *paths)
+
     val anat = icon("anat",
         "M12 4.5c-2.8-1.6-6.5.3-6.5 3.6 0 .9.3 1.7.8 2.4-1.2.7-1.8 1.9-1.8 3.2 0 2.6 2.2 4.3 4.6 4.1.6 1.2 1.7 1.8 2.9 1.8V4.5z",
         "M12 4.5c2.8-1.6 6.5.3 6.5 3.6 0 .9-.3 1.7-.8 2.4 1.2.7 1.8 1.9 1.8 3.2 0 2.6-2.2 4.3-4.6 4.1-.6 1.2-1.7 1.8-2.9 1.8")
@@ -106,6 +135,8 @@ object Icons {
     val special = icon("special", "M12 8a3 3 0 1 1-6 0a3 3 0 1 1 6 0z", "M3.5 19a5.5 5.5 0 0 1 11 0M16 5.5a2.5 2.5 0 0 1 0 5M20.5 19a4.5 4.5 0 0 0-3.5-4.4")
     val ops = icon("ops", "M2.5 7h11v9.5h-11zM13.5 10.5h4l3 3v3h-7", "M8.3 18a1.8 1.8 0 1 1-3.6 0a1.8 1.8 0 1 1 3.6 0z", "M18.8 18a1.8 1.8 0 1 1-3.6 0a1.8 1.8 0 1 1 3.6 0z", "M8 9.5v4M6 11.5h4")
     val check = icon("check", "M5 12.5l4.5 4.5L19 7.5")
+    val share = icon("share", "M12 14.5V3.5M8 7.5l4-4 4 4", "M8.5 10.5H6.5A1.5 1.5 0 0 0 5 12v7A1.5 1.5 0 0 0 6.5 20.5h11a1.5 1.5 0 0 0 1.5-1.5v-7a1.5 1.5 0 0 0-1.5-1.5h-2")
+    val repeat = icon("repeat", "M4.5 11.5a7.5 7.5 0 0 1 13-4.6L19.5 9", "M19.5 4.5V9H15", "M19.5 12.5a7.5 7.5 0 0 1-13 4.6L4.5 15", "M4.5 19.5V15H9")
     val back = icon("back", "M9 6l6 6-6 6")
     val pulse = icon("pulse", "M3 12.5h4l2-4.5 3.5 9 2.5-6.5 1.5 2h4.5")
     val timer = icon("timer", "M19 13a7 7 0 1 1-14 0a7 7 0 1 1 14 0z", "M12 9.5V13l2.5 2M9.5 3h5")

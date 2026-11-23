@@ -35,6 +35,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -123,6 +124,7 @@ fun HomeScreen(model: AppModel, nav: Nav) {
         }
         if (!searching) item {
             CollectionCard(model, Modifier.pageItem().padding(bottom = 16.dp).rise(1, entered)) { nav.go(Screen.Stickers) }
+            FriendsCard(model, Modifier.pageItem().padding(bottom = 16.dp).rise(1, entered)) { nav.go(Screen.Friends) }
         }
         if (!searching) item {
             HeroCard(model, nav, overall, right, all.size, Modifier.pageItem().rise(1, entered))
@@ -239,6 +241,19 @@ private fun QuickTiles(model: AppModel, nav: Nav) {
         if (safety != null) Tile(Icons.shield, "בטיחות בזירה", "עוצרים · סוקרים · מתמגנים", p.blue, Modifier.weight(1f)) { ViewerState.show(listOf(safety), 0) }
         if (protocols.isNotEmpty()) Tile(Icons.flow, "פרוטוקולים", "${protocols.size} תרשימי זרימה", p.blue, Modifier.weight(1f)) { nav.go(Screen.Protocols) }
     }
+    val due = model.reviewDueCount
+    if (due > 0) Row(
+        Modifier.fillMaxWidth().bouncy { nav.go(Screen.Quiz(model.reviewDue().take(40), QuizConfig("חזרה יומית", "review", instant = true))) }
+            .deepGlass(RoundedCornerShape(26.dp), elevation = 12.dp).padding(horizontal = 16.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp),
+    ) {
+        IconTile(Icons.repeat, p.blue, solid = true)
+        Column(Modifier.weight(1f)) {
+            Text("חזרה יומית", color = p.blue, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+            Text(if (due == 1) "שאלה אחת מחכה לחזרה" else "$due שאלות מחכות לחזרה", color = p.ink, fontSize = 16.5.sp, fontWeight = FontWeight.ExtraBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
+        Chevron(p.blue)
+    }
     model.lastTopicId?.let { model.topic(it) }?.let { t ->
         Row(
             Modifier.fillMaxWidth().bouncy { nav.go(Screen.Topic(t.id)) }
@@ -292,7 +307,7 @@ private fun CategoryChips(model: AppModel, modifier: Modifier) {
             val on = model.homeFilter == id
             val shape = RoundedCornerShape(50)
             Row(
-                Modifier.bouncy(pressedScale = .94f) { if (!on) tick(); model.setHomeFilter(id) }
+                Modifier.bouncy(pressedScale = .94f) { if (!on) tick(); model.chooseHomeFilter(id) }
                     .glass(shape, tint = if (on) p.blueSoft else Color.Unspecified, elevation = if (on) 8.dp else 3.dp)
                     .border(if (on) 1.5.dp else 0.dp, if (on) p.blue else Color.Transparent, shape)
                     .padding(horizontal = 14.dp, vertical = 9.dp),
@@ -367,13 +382,17 @@ fun PickerScreen(model: AppModel, nav: Nav) {
     val allIds = model.categories.map { it.id }
     val sel = model.selectedCats ?: allIds.toSet()
     val mistakes = model.mistakes().size
+    val all = model.allItems
+    val answered = all.count { model.isAnswered(it.id) }
+    val readiness = model.mastery(all)
+    val chosenQuestions = all.count { it.cat in sel }
     GlassPage(
-        "תרגול", null, subtitle = "בוחרים נושאים ומתחילים",
+        "תרגול", null, subtitle = "בונים תרגול לפי הנושאים שלכם",
         bottomSpace = 84.dp,
         bottom = {
             FloatingDock {
                 PrimaryButton(
-                    if (sel.isEmpty()) "בחר לפחות קטגוריה אחת" else "התחל תרגול · ${model.questionCount} שאלות", Modifier.fillMaxWidth(),
+                    if (sel.isEmpty()) "בחרו לפחות קטגוריה אחת" else "התחלת תרגול · ${model.questionCount} שאלות", Modifier.fillMaxWidth(),
                     enabled = sel.isNotEmpty(), icon = if (sel.isEmpty()) null else Icons.bolt,
                 ) {
                     nav.go(Screen.Quiz(model.pick(allIds.filter { it in sel }, model.questionCount), QuizConfig("תרגול שאלות", "practice", instant = true)))
@@ -381,67 +400,75 @@ fun PickerScreen(model: AppModel, nav: Nav) {
             }
         },
     ) {
-        SectionTitle(
-            "קטגוריות",
-            action = if (sel.size == allIds.size) "נקה הכול" else "בחר הכול",
-        ) { model.setSelection(if (sel.size == allIds.size) emptySet() else allIds.toSet()) }
-        model.categories.chunked(2).forEach { row ->
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                row.forEach { cat ->
-                    val items = model.itemsOf(cat.id)
-                    CategoryCard(
-                        name = cat.name, catId = cat.id, count = items.size, pct = model.mastery(items), seen = model.seen(items),
-                        on = cat.id in sel, modifier = Modifier.weight(1f),
-                    ) { model.setSelection(if (cat.id in sel) sel - cat.id else sel + cat.id) }
+        ReviewCard(model, nav)
+
+        // Key numbers, like a dashboard: how ready you are and how much you've done.
+        Row(Modifier.fillMaxWidth().glass(RoundedCornerShape(22.dp), elevation = 6.dp).padding(vertical = 14.dp)) {
+            Kpi("$readiness%", "מוכנות למבחן", p.tone(readiness), Modifier.weight(1f))
+            Box(Modifier.width(1.dp).height(40.dp).background(p.hair).align(Alignment.CenterVertically))
+            Kpi("$answered", "שאלות שנענו", p.ink, Modifier.weight(1f))
+            Box(Modifier.width(1.dp).height(40.dp).background(p.hair).align(Alignment.CenterVertically))
+            Kpi("${model.progress.attempts.size}", "תרגולים", p.ink, Modifier.weight(1f))
+        }
+
+        // The builder: categories, then how many questions.
+        Column(Modifier.fillMaxWidth().glass(RoundedCornerShape(22.dp), elevation = 6.dp)) {
+            Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 10.dp, top = 14.dp, bottom = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text("קטגוריות", color = p.ink, fontSize = 17.sp, fontWeight = FontWeight.ExtraBold)
+                    Text("נבחרו ${sel.size} מתוך ${allIds.size} · $chosenQuestions שאלות במאגר", color = p.muted, fontSize = 12.5.sp, fontWeight = FontWeight.SemiBold)
                 }
-                if (row.size == 1) Spacer(Modifier.weight(1f))
+                Text(
+                    if (sel.size == allIds.size) "נקה הכול" else "בחר הכול", color = p.blue, fontSize = 14.sp, fontWeight = FontWeight.ExtraBold,
+                    modifier = Modifier.clip(RoundedCornerShape(50)).bouncy { tick(); model.setSelection(if (sel.size == allIds.size) emptySet() else allIds.toSet()) }.padding(horizontal = 10.dp, vertical = 6.dp),
+                )
+            }
+            model.categories.forEachIndexed { i, cat ->
+                if (i > 0) Box(Modifier.padding(start = 64.dp).fillMaxWidth().height(1.dp).background(p.hair))
+                val items = model.itemsOf(cat.id)
+                CategoryRow(cat.name, cat.id, items.size, model.mastery(items), model.seen(items), cat.id in sel) {
+                    tick(); model.setSelection(if (cat.id in sel) sel - cat.id else sel + cat.id)
+                }
+            }
+            Box(Modifier.fillMaxWidth().height(1.dp).background(p.hair))
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text("מספר שאלות", color = p.ink, fontSize = 15.sp, fontWeight = FontWeight.ExtraBold)
+                Segmented(listOf(10, 20, 30, 50).map { it.toString() to it.toString() }, model.questionCount.toString()) { model.setCount(it.toInt()) }
             }
         }
 
-        SectionTitle("כמה שאלות?")
-        Segmented(listOf(10, 20, 30, 50).map { it.toString() to it.toString() }, model.questionCount.toString()) { model.setCount(it.toInt()) }
-
-        val savedCount = model.bookmarks.size
         SectionTitle("מצבי למידה")
-        Panel(spacing = 0.dp) {
-            GlassRow(
-                if (mistakes > 0) "תרגול הטעויות שלי" else "אין טעויות לתרגול",
-                subtitle = if (mistakes > 0) "$mistakes שאלות שטעית בהן" else "כל הכבוד, אין מה לתקן כרגע",
-                icon = Icons.target, iconColor = p.bad, enabled = mistakes > 0, inPanel = true,
-            ) { nav.go(Screen.Quiz(model.mistakes().shuffled().take(50), QuizConfig("תרגול טעויות", "mistakes", instant = true))) }
-            Divider()
-            GlassRow(
-                "אתגר 60 שניות",
-                subtitle = if (model.blitzBest > 0) "שיא אישי: ${model.blitzBest} נק'" else "כמה שיותר שאלות בדקה אחת",
-                icon = Icons.bolt, iconColor = p.blue, inPanel = true,
-            ) {
-                val cats = allIds.filter { it in sel }.ifEmpty { allIds }
-                nav.go(Screen.Blitz(model.pick(cats, 80)))
+        val savedCount = model.bookmarks.size
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            ModeTile(Icons.target, "הטעויות שלי", if (mistakes > 0) "$mistakes שאלות לתיקון" else "אין טעויות כרגע", mistakes > 0, Modifier.weight(1f)) {
+                nav.go(Screen.Quiz(model.mistakes().shuffled().take(50), QuizConfig("תרגול טעויות", "mistakes", instant = true)))
             }
-            Divider()
-            GlassRow("זיהוי אנטומיה", subtitle = "מצביעים על הנקודה בתמונה", icon = Icons.anat, iconColor = Color(0xFF8B6CFF), inPanel = true) { nav.go(Screen.AnatomyQuiz) }
-            Divider()
-            GlassRow(
-                "שאלות שמורות",
-                subtitle = if (savedCount > 0) "$savedCount שאלות שסימנת לחזרה" else "סמנו שאלות בזמן תרגול",
-                icon = Icons.bookmark, iconColor = p.blue, enabled = savedCount > 0, inPanel = true,
-            ) { nav.go(Screen.Quiz(model.bookmarkedItems().shuffled(), QuizConfig("שאלות שמורות", "bookmarks", instant = true))) }
+            ModeTile(Icons.bolt, "אתגר 60 שניות", if (model.blitzBest > 0) "שיא: ${model.blitzBest} נק'" else "כמה שיותר בדקה", true, Modifier.weight(1f)) {
+                nav.go(Screen.Blitz(model.pick(allIds.filter { it in sel }.ifEmpty { allIds }, 80)))
+            }
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            ModeTile(Icons.anat, "זיהוי אנטומיה", "מצביעים על התמונה", true, Modifier.weight(1f)) { nav.go(Screen.AnatomyQuiz) }
+            ModeTile(Icons.bookmark, "שאלות שמורות", if (savedCount > 0) "$savedCount שאלות" else "סמנו בזמן תרגול", savedCount > 0, Modifier.weight(1f)) {
+                nav.go(Screen.Quiz(model.bookmarkedItems().shuffled(), QuizConfig("שאלות שמורות", "bookmarks", instant = true)))
+            }
         }
 
         if (model.progress.attempts.isNotEmpty()) {
-            SectionTitle("ניסיונות אחרונים")
-            Panel(spacing = 0.dp) {
+            SectionTitle("תרגולים אחרונים")
+            Column(Modifier.fillMaxWidth().glass(RoundedCornerShape(22.dp), elevation = 6.dp).padding(horizontal = 16.dp)) {
                 model.progress.attempts.take(8).forEachIndexed { i, a ->
-                    if (i > 0) Divider()
+                    if (i > 0) Box(Modifier.fillMaxWidth().height(1.dp).background(p.hair))
                     val ok = a.pct >= model.passMark
-                    Row(
-                        Modifier.fillMaxWidth().padding(vertical = 12.dp),
-                        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    ) {
-                        Box(Modifier.size(10.dp).clip(CircleShape).background(if (ok) p.good else p.bad))
-                        Text(a.title, color = p.ink, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
-                        Text("${a.right}/${a.total}", color = p.muted, fontSize = 14.sp)
-                        Pill("${a.pct}%", if (ok) p.good else p.bad, if (ok) p.goodSoft else p.badSoft)
+                    Row(Modifier.fillMaxWidth().padding(vertical = 12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Column(Modifier.weight(1f)) {
+                            Text(a.title, color = p.ink, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                            Text("${a.right} מתוך ${a.total} נכונות", color = p.muted, fontSize = 12.5.sp)
+                        }
+                        Text(
+                            "${a.pct}%", color = if (ok) p.good else p.bad, fontSize = 16.sp, fontWeight = FontWeight.Black,
+                            modifier = Modifier.clip(RoundedCornerShape(10.dp)).background(if (ok) p.goodSoft else p.badSoft).padding(horizontal = 10.dp, vertical = 5.dp),
+                        )
                     }
                 }
             }
@@ -449,32 +476,106 @@ fun PickerScreen(model: AppModel, nav: Nav) {
     }
 }
 
+/**
+ * Spaced review: each mistake returns after a day, then 3 days, then a week, and leaves once it's
+ * answered right at the last stage. Shows what's due today and how many questions sit at each stage.
+ */
 @Composable
-private fun CategoryCard(name: String, catId: String, count: Int, pct: Int, seen: Boolean, on: Boolean, modifier: Modifier, onClick: () -> Unit) {
+private fun ReviewCard(model: AppModel, nav: Nav) {
     val p = Pal
-    val shape = RoundedCornerShape(26.dp)
-    Column(
-        modifier.bouncy(onClick = onClick).alpha(if (on) 1f else .62f)
-            .glass(shape, tint = if (on) p.blueSoft.copy(alpha = p.blueSoft.alpha * .6f) else Color.Unspecified, elevation = if (on) 10.dp else 2.dp)
-            .then(if (on) Modifier.border(1.5.dp, p.line, shape) else Modifier)
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        Row(verticalAlignment = Alignment.Top) {
-            IconTile(Icons.forCategory(catId), p.blue, solid = on)
-            Spacer(Modifier.weight(1f))
-            Box(
-                Modifier.size(26.dp).clip(CircleShape)
-                    .background(if (on) Brush.linearGradient(listOf(p.bandA, p.bandB)) else SolidColor(Color.Transparent))
-                    .border(if (on) 0.dp else 2.dp, p.muted.copy(alpha = .4f), CircleShape),
-                contentAlignment = Alignment.Center,
-            ) { if (on) Icon(Icons.check, null, tint = Color.White, modifier = Modifier.size(16.dp)) }
+    val due = model.reviewDueCount
+    val stages = model.reviewStages()
+    val inReview = stages.sum()
+    Column(Modifier.fillMaxWidth().glass(RoundedCornerShape(22.dp), elevation = 6.dp).padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Box(Modifier.size(44.dp).clip(RoundedCornerShape(13.dp)).background(if (due > 0) Brand else p.blueSoft), contentAlignment = Alignment.Center) {
+                Icon(Icons.repeat, null, tint = if (due > 0) Color.White else p.blue, modifier = Modifier.size(24.dp))
+            }
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text("חזרה יומית", color = p.ink, fontSize = 17.sp, fontWeight = FontWeight.ExtraBold)
+                Text(
+                    when {
+                        due > 0 -> if (due == 1) "שאלה אחת מחכה לחזרה היום" else "$due שאלות מחכות לחזרה היום"
+                        model.reviewTomorrow > 0 -> "סיימת להיום · מחר ${model.reviewTomorrow} שאלות"
+                        inReview > 0 -> "סיימת להיום · הבאות בעוד כמה ימים"
+                        else -> "שאלות שטעית בהן יחזרו לכאן"
+                    },
+                    color = p.muted, fontSize = 13.sp, fontWeight = FontWeight.SemiBold,
+                )
+            }
         }
-        Text(name, color = p.ink, fontSize = 15.5.sp, fontWeight = FontWeight.Bold, minLines = 2, maxLines = 2, lineHeight = 20.sp)
-        ProgressBar(if (seen) pct / 100f else 0f, p.tone(pct), height = 6.dp)
-        Row(verticalAlignment = Alignment.Bottom) {
-            Text(if (seen) "$pct%" else "חדש", color = if (seen) p.tone(pct) else p.muted, fontSize = if (seen) 24.sp else 16.sp, fontWeight = FontWeight.Black, modifier = Modifier.weight(1f))
-            Text("$count שאלות", color = p.muted, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+        // The three stages with how many questions wait in each.
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            listOf("אחרי יום", "אחרי 3 ימים", "אחרי שבוע").forEachIndexed { i, label ->
+                val n = stages.getOrElse(i) { 0 }
+                Column(
+                    Modifier.weight(1f).clip(RoundedCornerShape(14.dp))
+                        .background(if (p.dark) Color.White.copy(alpha = .06f) else Color.Black.copy(alpha = .04f)).padding(vertical = 10.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(2.dp),
+                ) {
+                    Text("$n", color = if (n > 0) p.ink else p.muted, fontSize = 20.sp, fontWeight = FontWeight.Black)
+                    Text(label, color = p.muted, fontSize = 11.5.sp, fontWeight = FontWeight.Bold)
+                }
+            }
+        }
+        if (due > 0) PrimaryButton("להתחיל חזרה · ${minOf(due, 40)} שאלות", Modifier.fillMaxWidth(), icon = Icons.repeat) {
+            nav.go(Screen.Quiz(model.reviewDue().take(40), QuizConfig("חזרה יומית", "review", instant = true)))
+        }
+    }
+}
+
+@Composable
+private fun Kpi(value: String, label: String, color: Color, modifier: Modifier) {
+    val p = Pal
+    Column(modifier, horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Text(value, color = color, fontSize = 24.sp, fontWeight = FontWeight.Black)
+        Text(label, color = p.muted, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+    }
+}
+
+/** One category in the builder: icon, name, size and mastery, and a checkbox. */
+@Composable
+private fun CategoryRow(name: String, catId: String, count: Int, pct: Int, seen: Boolean, on: Boolean, onClick: () -> Unit) {
+    val p = Pal
+    Row(
+        Modifier.fillMaxWidth().bouncy(pressedScale = .985f, onClick = onClick).padding(horizontal = 16.dp, vertical = 11.dp),
+        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Box(
+            Modifier.size(36.dp).clip(RoundedCornerShape(10.dp)).background(if (p.dark) Color.White.copy(alpha = .07f) else Color.Black.copy(alpha = .045f)),
+            contentAlignment = Alignment.Center,
+        ) { Icon(Icons.forCategory(catId), null, tint = if (on) p.ink else p.muted, modifier = Modifier.size(20.dp)) }
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(name, color = if (on) p.ink else p.muted, fontSize = 15.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                Text(if (seen) "$pct%" else "$count שאלות", color = if (seen) p.tone(pct) else p.muted, fontSize = 12.5.sp, fontWeight = FontWeight.ExtraBold)
+            }
+            ProgressBar(if (seen) pct / 100f else 0f, p.tone(pct), height = 4.dp)
+        }
+        Box(
+            Modifier.size(24.dp).clip(RoundedCornerShape(7.dp))
+                .background(if (on) Brand else Color.Transparent)
+                .border(if (on) 0.dp else 2.dp, p.muted.copy(alpha = .45f), RoundedCornerShape(7.dp)),
+            contentAlignment = Alignment.Center,
+        ) { if (on) Icon(Icons.check, null, tint = Color.White, modifier = Modifier.size(16.dp)) }
+    }
+}
+
+/** A learning mode: neutral tile, monochrome icon, title and a short status line. */
+@Composable
+private fun ModeTile(icon: ImageVector, title: String, sub: String, enabled: Boolean, modifier: Modifier, onClick: () -> Unit) {
+    val p = Pal
+    Column(
+        modifier.alpha(if (enabled) 1f else .5f).bouncy(enabled = enabled, onClick = onClick)
+            .glass(RoundedCornerShape(20.dp), elevation = 4.dp).padding(14.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Box(Modifier.size(38.dp).clip(RoundedCornerShape(11.dp)).background(p.blueSoft), contentAlignment = Alignment.Center) {
+            Icon(icon, null, tint = p.blue, modifier = Modifier.size(20.dp))
+        }
+        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(title, color = p.ink, fontSize = 15.sp, fontWeight = FontWeight.ExtraBold, maxLines = 1)
+            Text(sub, color = p.muted, fontSize = 12.5.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
     }
 }

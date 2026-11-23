@@ -51,3 +51,14 @@ expect object Reminders {
     /** Replaces every reminder this app has pending with [items]. */
     fun schedule(items: List<ReminderItem>)
 }
+
+/** What the home screen widget shows. [day] is the local epoch day it was written, so a stale copy can be spotted. */
+data class WidgetData(val streak: Int, val doneToday: Boolean, val todayCount: Int, val goal: Int, val reviewDue: Int, val day: Long)
+
+/** Hands the latest numbers to the home screen widget (iOS: the shared App Group; no widget on Android yet). */
+expect object WidgetBridge {
+    fun publish(data: WidgetData)
+}
+
+/** Opens the system share sheet with [text]. */
+expect fun shareText(text: String)

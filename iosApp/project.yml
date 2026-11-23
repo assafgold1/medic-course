@@ -20,6 +20,7 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.taninoni.medic
         PRODUCT_NAME: Medic
         INFOPLIST_FILE: iosApp/Info.plist
+        CODE_SIGN_ENTITLEMENTS: iosApp/Medic.entitlements
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         TARGETED_DEVICE_FAMILY: "1"
         CODE_SIGN_STYLE: Automatic
@@ -27,6 +28,9 @@ targets:
         "EXCLUDED_ARCHS[sdk=iphonesimulator*]": x86_64
         FRAMEWORK_SEARCH_PATHS: "$(SRCROOT)/../shared/build/xcode-frameworks/$(CONFIGURATION)/$(SDK_NAME)"
         OTHER_LDFLAGS: "$(inherited) -framework Shared"
+    dependencies:
+      - target: MedicWidget
+        embed: true
     preBuildScripts:
       - name: Build Kotlin shared framework
         basedOnDependencyAnalysis: false
@@ -34,3 +38,20 @@ targets:
           cd "$SRCROOT/.."
           export JAVA_HOME="${JAVA_HOME:-/opt/homebrew/opt/openjdk@17}"
           ./gradlew :shared:embedAndSignAppleFrameworkForXcode
+
+  # Home screen widget: streak, today's progress, "5 questions now". Reads the App Group the app writes to.
+  MedicWidget:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: MedicWidget
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.taninoni.medic.widget
+        INFOPLIST_FILE: MedicWidget/Info.plist
+        CODE_SIGN_ENTITLEMENTS: MedicWidget/MedicWidget.entitlements
+        TARGETED_DEVICE_FAMILY: "1"
+        CODE_SIGN_STYLE: Automatic
+        APPLICATION_EXTENSION_API_ONLY: YES
+        SKIP_INSTALL: YES
+        "EXCLUDED_ARCHS[sdk=iphonesimulator*]": x86_64

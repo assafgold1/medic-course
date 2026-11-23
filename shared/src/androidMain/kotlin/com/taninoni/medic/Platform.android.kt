@@ -158,3 +158,13 @@ actual object Haptics {
     actual fun warning() = pattern(longArrayOf(0, 30, 90, 30), intArrayOf(0, 180, 0, 180))
     actual fun error() = pattern(longArrayOf(0, 40, 60, 40, 60, 40), intArrayOf(0, 220, 0, 220, 0, 220))
 }
+
+actual object WidgetBridge {
+    actual fun publish(data: WidgetData) {}
+}
+
+actual fun shareText(text: String) {
+    val activity = AndroidContext.activity ?: return
+    val send = android.content.Intent(android.content.Intent.ACTION_SEND).setType("text/plain").putExtra(android.content.Intent.EXTRA_TEXT, text)
+    activity.startActivity(android.content.Intent.createChooser(send, null))
+}

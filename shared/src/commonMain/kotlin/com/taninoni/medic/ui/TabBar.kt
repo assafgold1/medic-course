@@ -37,61 +37,89 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-/** Space a tab screen leaves at its bottom so content can scroll clear of the floating bar. */
-val TAB_BAR_SPACE = 92.dp
+/** Space a tab screen leaves at its bottom so content scrolls clear of the tab bar (the system inset is added separately). */
+val TAB_BAR_SPACE = 60.dp
 val LocalBottomInset = compositionLocalOf<Dp> { 0.dp }
 
-/** Keeps the end of a scrolling screen above the floating tab bar (or the system bar). */
+/** Keeps the end of a scrolling screen above the tab bar (or the system bar). */
 @Composable
 fun BottomSpace(extra: Dp = 24.dp) {
     Spacer(Modifier.windowInsetsPadding(WindowInsets.navigationBars).height(LocalBottomInset.current + extra))
 }
 
+/** The tab shown as the raised round button in the middle of the bar: the defibrillator. */
+private val CENTER_TAB = Screen.Aed
+
 /**
- * Floating Liquid Glass tab bar. The selected tab sits under a glass droplet that slides between
- * tabs on a spring and stretches as it travels, the way a drop of liquid would.
+ * Docked tab bar with rounded top corners. The defibrillator, the app's signature tool, is a raised
+ * orange button in the middle; the other tabs have outline icons that fill in when picked, and a short
+ * orange line glides above the selected one.
  */
 @Composable
 fun TabBar(nav: Nav, modifier: Modifier = Modifier) {
     val p = Pal
-    val shape = RoundedCornerShape(50)
     val index = TABS.indexOfFirst { it.screen == nav.current }.coerceAtLeast(0)
+    val center = TABS.indexOfFirst { it.screen == CENTER_TAB }
+    val src = remember { MutableInteractionSource() }
+    val idle = if (p.dark) Color(0xFF8E8A87) else Color(0xFF8A8580)
+    val surface = if (p.dark) Color(0xFF1C1918) else Color.White
+    val topShape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
     BoxWithConstraints(
-        modifier.windowInsetsPadding(WindowInsets.navigationBars)
-            .padding(horizontal = 18.dp, vertical = 6.dp)
-            .widthIn(max = 520.dp).fillMaxWidth().height(68.dp)
-            .frostedGlass(shape),
+        modifier.fillMaxWidth()
+            .shadow(16.dp, topShape, clip = false, ambientColor = Color.Black.copy(alpha = .14f), spotColor = Color.Black.copy(alpha = .14f))
+            .background(surface, topShape),
     ) {
-        val inner = maxWidth - 12.dp
-        val w = inner / TABS.size
-        val x by animateDpAsState(w * index, spring(dampingRatio = .68f, stiffness = 380f))
-        // Stretch the droplet while it is moving: the further from rest, the wider it gets.
-        val stretch = (kotlin.math.abs((x - w * index).value) / w.value).coerceIn(0f, 1f)
-        val sx by animateFloatAsState(1f + stretch * .35f, spring(dampingRatio = .6f, stiffness = 600f))
-        val src = remember { MutableInteractionSource() }
+        val slot = maxWidth.coerceAtMost(560.dp) / TABS.size
+        val side = (maxWidth - slot * TABS.size) / 2
+        // The glide line: under the raised button it fades away, since the button speaks for itself.
+        val lineX by animateDpAsState(side + slot * index + (slot - 22.dp) / 2, spring(dampingRatio = .72f, stiffness = 420f))
+        val lineAlpha by animateFloatAsState(if (index == center) 0f else 1f)
         Box(
-            Modifier.padding(6.dp).offset(x = x).width(w).fillMaxHeight()
-                .graphicsLayer { scaleX = sx; scaleY = 1f / (1f + (sx - 1f) * .4f) }
-                .clip(shape)
-                .background(Brand),
+            Modifier.offset(x = lineX).width(22.dp).height(3.dp)
+                .graphicsLayer { alpha = lineAlpha }
+                .clip(RoundedCornerShape(bottomStart = 3.dp, bottomEnd = 3.dp)).background(Brand),
         )
-        Row(Modifier.padding(6.dp).fillMaxWidth().fillMaxHeight()) {
+        Row(
+            Modifier.windowInsetsPadding(WindowInsets.navigationBars).widthIn(max = 560.dp).fillMaxWidth()
+                .height(58.dp).align(Alignment.TopCenter),
+        ) {
             TABS.forEachIndexed { i, tab ->
                 val on = i == index
-                val tint by animateColorAsState(if (on) Color.White else p.ink.copy(alpha = .62f))
-                val lift by animateFloatAsState(if (on) 1.08f else 1f, spring(dampingRatio = .45f, stiffness = 500f))
+                val color by animateColorAsState(if (on) Brand else idle)
+                val pop by animateFloatAsState(if (on) 1f else 0f, spring(dampingRatio = .4f, stiffness = 600f))
                 Column(
                     Modifier.weight(1f).fillMaxHeight().bouncy(label = tab.label, interaction = src, pressedScale = .9f) { if (!on) tick(); nav.tab(tab.screen) },
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterVertically),
+                    verticalArrangement = Arrangement.spacedBy(3.dp, Alignment.Bottom),
                 ) {
-                    Icon(tab.icon, tab.label, tint = tint, modifier = Modifier.size(24.dp).graphicsLayer { scaleX = lift; scaleY = lift })
-                    Text(tab.label, color = tint, fontSize = 11.sp, fontWeight = if (on) FontWeight.Bold else FontWeight.Medium, maxLines = 1, softWrap = false)
+                    if (i == center) {
+                        // Raised round button sitting half above the bar, ringed in the bar's colour.
+                        Box(
+                            Modifier.padding(bottom = 7.dp).offset(y = (-14).dp).size(58.dp)
+                                .graphicsLayer { val sc = 1f + .06f * pop; scaleX = sc; scaleY = sc }
+                                .shadow(if (on) 14.dp else 8.dp, CircleShape, ambientColor = Brand, spotColor = Brand)
+                                .clip(CircleShape)
+                                .background(Brush.verticalGradient(listOf(Color(0xFFFF8A3D), Brand, Color(0xFFDD5512))))
+                                .border(4.dp, surface, CircleShape),
+                            contentAlignment = Alignment.Center,
+                        ) { Icon(tab.iconOn, tab.label, tint = Color.White, modifier = Modifier.size(28.dp)) }
+                    } else {
+                        Icon(
+                            if (on) tab.iconOn else tab.icon, tab.label, tint = color,
+                            modifier = Modifier.size(25.dp).graphicsLayer { val sc = 1f + .1f * pop * (1f - pop) * 4f; scaleX = sc; scaleY = sc },
+                        )
+                        Text(
+                            tab.label, color = color, fontSize = 10.5.sp, fontWeight = if (on) FontWeight.ExtraBold else FontWeight.SemiBold,
+                            maxLines = 1, softWrap = false, modifier = Modifier.padding(bottom = 7.dp),
+                        )
+                    }
                 }
             }
         }

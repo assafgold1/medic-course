@@ -101,3 +101,28 @@ actual object Haptics {
     actual fun warning() = notify(platform.UIKit.UINotificationFeedbackType.UINotificationFeedbackTypeWarning)
     actual fun error() = notify(platform.UIKit.UINotificationFeedbackType.UINotificationFeedbackTypeError)
 }
+
+/** Writes the widget's numbers to the App Group the widget extension reads. The app reloads the widget when it goes to the background. */
+actual object WidgetBridge {
+    private val store by lazy { platform.Foundation.NSUserDefaults(suiteName = "group.com.taninoni.medic") }
+    private var last: WidgetData? = null
+    actual fun publish(data: WidgetData) {
+        if (data == last) return
+        last = data
+        store.setInteger(data.streak.toLong(), "streak")
+        store.setBool(data.doneToday, "doneToday")
+        store.setInteger(data.todayCount.toLong(), "todayCount")
+        store.setInteger(data.goal.toLong(), "goal")
+        store.setInteger(data.reviewDue.toLong(), "reviewDue")
+        store.setInteger(data.day, "day")
+        store.setBool(true, "ready")
+    }
+}
+
+actual fun shareText(text: String) {
+    val root = platform.UIKit.UIApplication.sharedApplication.keyWindow?.rootViewController ?: return
+    var top = root
+    while (top.presentedViewController != null) top = top.presentedViewController!!
+    val sheet = platform.UIKit.UIActivityViewController(listOf(text), null)
+    top.presentViewController(sheet, animated = true, completion = null)
+}

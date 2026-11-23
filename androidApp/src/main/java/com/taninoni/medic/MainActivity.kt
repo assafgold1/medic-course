@@ -29,7 +29,7 @@ class MainActivity : ComponentActivity() {
     }
 
     @Deprecated("Deprecated in ComponentActivity")
-    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == AndroidContext.NOTIFY_PERMISSION_REQUEST) {
             AndroidContext.permissionCallback?.invoke(grantResults.firstOrNull() == android.content.pm.PackageManager.PERMISSION_GRANTED)

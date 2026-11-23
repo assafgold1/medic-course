@@ -85,6 +85,10 @@ data class GeneralRow(val label: String, val value: String)
 @Serializable
 data class Answer(val v: Int, val t: Long)
 
+/** A question in spaced review: [stage] 1–3, due on local epoch [day]. */
+@Serializable
+data class ReviewCard(val stage: Int, val day: Long)
+
 @Serializable
 data class Attempt(
     val id: String,
@@ -164,3 +168,23 @@ data class QItem(val question: Question, val topic: Topic) {
 data class LogEntry(val item: QItem, val picked: Int) {
     val ok get() = picked == 0
 }
+
+/* ---- friends (same shape as the server) ---- */
+
+@Serializable
+data class FriendDto(
+    val id: Long, val name: String, val org: String = "", val streak: Int = 0, val week: Int = 0,
+    val mastery: Int = 0, val lastActive: Long = 0, val me: Boolean = false,
+)
+
+@Serializable
+data class FriendsResponse(val code: String, val friends: List<FriendDto>)
+
+@Serializable
+data class AddFriendRequest(val code: String)
+
+@Serializable
+data class ReportRequest(val reason: String)
+
+@Serializable
+data class StatsRequest(val streak: Int, val day: Long)

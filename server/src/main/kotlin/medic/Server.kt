@@ -21,6 +21,7 @@ import io.ktor.server.request.receive
 import io.ktor.server.response.header
 import io.ktor.server.response.respond
 import io.ktor.server.response.respondText
+import io.ktor.server.routing.delete
 import io.ktor.server.routing.get
 import io.ktor.server.routing.post
 import io.ktor.server.routing.put
@@ -70,6 +71,27 @@ fun Application.module(db: Db, instructors: Set<String> = System.getenv("MEDIC_I
             maxOf(p.updatedAt, p.attempts.maxOfOrNull { it.at } ?: 0), joined, org = u.org,
         )
     }
+    /** The friends board for [userId]: friends plus the user, most questions this week first. */
+    fun friendsOf(userId: Long): FriendsResponse {
+        val now = System.currentTimeMillis()
+        val utcDay = now / 86_400_000L
+        val weekAgo = now - 7 * 86_400_000L
+        val rows = db.friendRows(db.friendIds(userId) + userId).map { f ->
+            val p = f.progress
+            val correct = p.answers.count { it.key in questionCat && it.value.v == 1 }
+            FriendDto(
+                f.id, f.name, f.org,
+                // A streak reported more than a day ago has lapsed unless the app reports it again.
+                streak = if (f.streakDay >= utcDay - 1) f.streak else 0,
+                week = p.answers.count { it.value.t >= weekAgo },
+                mastery = if (questionCat.isEmpty()) 0 else correct * 100 / questionCat.size,
+                lastActive = maxOf(p.updatedAt, p.answers.values.maxOfOrNull { it.t } ?: 0),
+                me = f.id == userId,
+            )
+        }.sortedWith(compareByDescending<FriendDto> { it.week }.thenByDescending { it.streak }.thenBy { it.name })
+        return FriendsResponse(db.friendCode(userId), rows)
+    }
+
     val version = Json.parseToJsonElement(content).let { (it as kotlinx.serialization.json.JsonObject)["version"].toString().trim('"') }
     val etag = "\"" + MessageDigest.getInstance("SHA-256").digest(content.toByteArray()).joinToString("") { "%02x".format(it) }.take(16) + "\""
 
@@ -81,6 +103,7 @@ fun Application.module(db: Db, instructors: Set<String> = System.getenv("MEDIC_I
         allowHeader(HttpHeaders.Authorization)
         allowHeader(HttpHeaders.ContentType)
         allowMethod(HttpMethod.Put)
+        allowMethod(HttpMethod.Delete)
     }
     install(StatusPages) {
         exception<Throwable> { call, cause ->
@@ -173,6 +196,55 @@ fun Application.module(db: Db, instructors: Set<String> = System.getenv("MEDIC_I
                 if (!db.checkPassword(user.id, req.password)) return@post call.respond(HttpStatusCode.Forbidden, ErrorDto("הסיסמה שגויה"))
                 db.deleteUser(user.id)
                 call.response.cookies.append(Cookie(TOKEN_COOKIE, "", maxAge = 0, path = "/", httpOnly = true))
+                call.respond(HttpStatusCode.NoContent)
+            }
+            put("/me/stats") {
+                val user = call.user(db) ?: return@put
+                val req = call.receive<StatsRequest>()
+                db.setStreak(user.id, req.streak, req.day)
+                call.respond(HttpStatusCode.NoContent)
+            }
+            // Friends: share your code, add others by theirs, and compare the week.
+            get("/friends") {
+                val user = call.user(db) ?: return@get
+                call.respond(friendsOf(user.id))
+            }
+            post("/friends") {
+                val user = call.user(db) ?: return@post
+                val code = call.receive<AddFriendRequest>().code.trim().uppercase()
+                val notFound = ErrorDto("לא נמצא משתמש עם הקוד הזה")
+                val other = db.userIdByCode(code) ?: return@post call.respond(HttpStatusCode.NotFound, notFound)
+                if (other == user.id) return@post call.respond(HttpStatusCode.BadRequest, ErrorDto("זה הקוד שלך 🙂"))
+                // Someone who blocked you looks like an unknown code, so a block isn't revealed.
+                if (db.isBlocked(other, user.id)) return@post call.respond(HttpStatusCode.NotFound, notFound)
+                db.unblock(user.id, other)
+                if (db.friendIds(user.id).size >= 200) return@post call.respond(HttpStatusCode.BadRequest, ErrorDto("הגעת למספר החברים המרבי"))
+                db.addFriend(user.id, other)
+                call.respond(friendsOf(user.id))
+            }
+            delete("/friends/{id}") {
+                val user = call.user(db) ?: return@delete
+                val id = call.parameters["id"]?.toLongOrNull() ?: return@delete call.respond(HttpStatusCode.BadRequest, ErrorDto("מזהה לא תקין"))
+                db.removeFriend(user.id, id)
+                call.respond(HttpStatusCode.NoContent)
+            }
+            // Block: ends the friendship and stops them adding you again. Only people on your board can be blocked or reported.
+            post("/friends/{id}/block") {
+                val user = call.user(db) ?: return@post
+                val id = call.parameters["id"]?.toLongOrNull()?.takeIf { it in db.friendIds(user.id) }
+                    ?: return@post call.respond(HttpStatusCode.NotFound, ErrorDto("המשתמש לא נמצא ברשימת החברים"))
+                db.block(user.id, id)
+                call.respond(HttpStatusCode.NoContent)
+            }
+            // Report: stored for review (see deploy/MODERATION.md) and the reported user is blocked.
+            post("/friends/{id}/report") {
+                val user = call.user(db) ?: return@post
+                val id = call.parameters["id"]?.toLongOrNull()?.takeIf { it in db.friendIds(user.id) }
+                    ?: return@post call.respond(HttpStatusCode.NotFound, ErrorDto("המשתמש לא נמצא ברשימת החברים"))
+                val reason = call.receive<ReportRequest>().reason.trim().take(500).ifEmpty { "other" }
+                val reportId = db.addReport(user.id, id, reason)
+                db.block(user.id, id)
+                call.application.environment.log.warn("REPORT #$reportId: user ${user.id} reported user $id: $reason")
                 call.respond(HttpStatusCode.NoContent)
             }
             get("/progress") {

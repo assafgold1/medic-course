@@ -3,6 +3,7 @@ package medic
 import io.ktor.client.call.body
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.request.bearerAuth
+import io.ktor.client.request.delete
 import io.ktor.client.request.get
 import io.ktor.client.request.post
 import io.ktor.client.request.put
@@ -143,5 +144,82 @@ class ServerTest {
         val teacher = client.post("/api/auth/register") { contentType(ContentType.Application.Json); setBody(RegisterRequest("teacher@b.co", "password7", "Teacher")) }.body<AuthResponse>()
         val list = client.get("/api/instructor/students") { bearerAuth(teacher.token) }.body<List<StudentSummary>>()
         assertEquals("uh", list.first { it.email == "dana@b.co" }.org)
+    }
+
+    @Test
+    fun friends() = testApplication {
+        val dbFile = File.createTempFile("medic", ".db").apply { deleteOnExit() }
+        application { module(Db(dbFile.path)) }
+        val client = createClient { install(ContentNegotiation) { json() } }
+        suspend fun reg(email: String, name: String) = client.post("/api/auth/register") {
+            contentType(ContentType.Application.Json); setBody(RegisterRequest(email, "password1", name))
+        }.body<AuthResponse>().token
+        val a = reg("a@b.co", "Alice")
+        val b = reg("b@b.co", "Bob")
+
+        val codeB = client.get("/api/friends") { bearerAuth(b) }.body<FriendsResponse>().code
+        assertEquals(6, codeB.length)
+        assertEquals(codeB, client.get("/api/friends") { bearerAuth(b) }.body<FriendsResponse>().code) // stable
+
+        // Unknown code, own code, then Bob's code (lower case works too).
+        assertEquals(HttpStatusCode.NotFound, client.post("/api/friends") { bearerAuth(a); contentType(ContentType.Application.Json); setBody(AddFriendRequest("ZZZZZZ")) }.status)
+        val codeA = client.get("/api/friends") { bearerAuth(a) }.body<FriendsResponse>().code
+        assertEquals(HttpStatusCode.BadRequest, client.post("/api/friends") { bearerAuth(a); contentType(ContentType.Application.Json); setBody(AddFriendRequest(codeA)) }.status)
+        client.put("/api/progress") { bearerAuth(b); contentType(ContentType.Application.Json); setBody(Progress(mapOf("aed#0" to Answer(1, System.currentTimeMillis())))) }
+        client.put("/api/me/stats") { bearerAuth(b); contentType(ContentType.Application.Json); setBody(StatsRequest(5, System.currentTimeMillis() / 86_400_000L)) }
+        val board = client.post("/api/friends") { bearerAuth(a); contentType(ContentType.Application.Json); setBody(AddFriendRequest(codeB.lowercase())) }.body<FriendsResponse>()
+        assertEquals(listOf("Bob", "Alice"), board.friends.map { it.name }) // Bob answered this week, so he leads
+        assertEquals(5, board.friends[0].streak)
+        assertEquals(1, board.friends[0].week)
+        assertTrue(board.friends[1].me)
+
+        // Friendship is mutual, and removing it removes both sides.
+        assertEquals(2, client.get("/api/friends") { bearerAuth(b) }.body<FriendsResponse>().friends.size)
+        val bobId = board.friends[0].id
+        assertEquals(HttpStatusCode.NoContent, client.delete("/api/friends/$bobId") { bearerAuth(a) }.status)
+        assertEquals(1, client.get("/api/friends") { bearerAuth(b) }.body<FriendsResponse>().friends.size)
+    }
+
+    @Test
+    fun blockAndReport() = testApplication {
+        val dbFile = File.createTempFile("medic", ".db").apply { deleteOnExit() }
+        val db = Db(dbFile.path)
+        application { module(db) }
+        val client = createClient { install(ContentNegotiation) { json() } }
+        suspend fun reg(email: String, name: String) = client.post("/api/auth/register") {
+            contentType(ContentType.Application.Json); setBody(RegisterRequest(email, "password1", name))
+        }.body<AuthResponse>().token
+        suspend fun board(t: String) = client.get("/api/friends") { bearerAuth(t) }.body<FriendsResponse>()
+        suspend fun add(t: String, code: String) = client.post("/api/friends") { bearerAuth(t); contentType(ContentType.Application.Json); setBody(AddFriendRequest(code)) }
+        val a = reg("a@b.co", "Alice")
+        val b = reg("b@b.co", "Bob")
+        val c = reg("c@b.co", "Carol")
+        val codeA = board(a).code
+        val codeB = board(b).code
+        add(b, codeA)
+        val aliceId = board(b).friends.first { !it.me }.id
+        val bobId = board(a).friends.first { !it.me }.id
+
+        // Only people on your board can be blocked or reported.
+        val carolId = board(c).friends.single().id
+        assertEquals(HttpStatusCode.NotFound, client.post("/api/friends/$carolId/block") { bearerAuth(a) }.status)
+
+        // Alice blocks Bob: both boards lose the other, and Bob can't add her back.
+        assertEquals(HttpStatusCode.NoContent, client.post("/api/friends/$bobId/block") { bearerAuth(a) }.status)
+        assertEquals(1, board(a).friends.size)
+        assertEquals(1, board(b).friends.size)
+        assertEquals(HttpStatusCode.NotFound, add(b, codeA).status)
+
+        // Alice adding Bob again lifts her block.
+        assertEquals(HttpStatusCode.OK, add(a, codeB).status)
+        assertEquals(2, board(b).friends.size)
+
+        // Bob reports Alice: the report is stored with her name, and she's blocked.
+        assertEquals(HttpStatusCode.NoContent, client.post("/api/friends/$aliceId/report") { bearerAuth(b); contentType(ContentType.Application.Json); setBody(ReportRequest("name")) }.status)
+        assertEquals(1, board(b).friends.size)
+        assertEquals(HttpStatusCode.NotFound, add(a, codeB).status)
+        val report = db.openReports().single()
+        assertEquals("Alice", report.name)
+        assertEquals("name", report.reason)
     }
 }

@@ -87,3 +87,23 @@ data class VersionDto(val version: String)
 
 @Serializable
 data class HealthDto(val status: String, val contentVersion: String, val users: Long)
+
+/** One person on the friends board. [week] is questions answered in the last 7 days; [mastery] is % of the course answered right. */
+@Serializable
+data class FriendDto(
+    val id: Long, val name: String, val org: String = "", val streak: Int = 0, val week: Int = 0,
+    val mastery: Int = 0, val lastActive: Long = 0, val me: Boolean = false,
+)
+
+@Serializable
+data class FriendsResponse(val code: String, val friends: List<FriendDto>)
+
+@Serializable
+data class AddFriendRequest(val code: String)
+
+/** [reason] is one of the app's fixed choices (name, organisation, other), plus optional free text. */
+@Serializable
+data class ReportRequest(val reason: String)
+
+@Serializable
+data class StatsRequest(val streak: Int, val day: Long)

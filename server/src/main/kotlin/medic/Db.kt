@@ -27,6 +27,10 @@ class Db(path: String) {
             val cols = st.executeQuery("PRAGMA table_info(users)").use { r -> buildSet { while (r.next()) add(r.getString("name")) } }
             if ("address" !in cols) st.execute("ALTER TABLE users ADD COLUMN address TEXT NOT NULL DEFAULT ''")
             if ("org" !in cols) st.execute("ALTER TABLE users ADD COLUMN org TEXT NOT NULL DEFAULT ''")
+            if ("friend_code" !in cols) st.execute("ALTER TABLE users ADD COLUMN friend_code TEXT")
+            if ("streak" !in cols) st.execute("ALTER TABLE users ADD COLUMN streak INTEGER NOT NULL DEFAULT 0")
+            if ("streak_day" !in cols) st.execute("ALTER TABLE users ADD COLUMN streak_day INTEGER NOT NULL DEFAULT 0")
+            st.execute("CREATE UNIQUE INDEX IF NOT EXISTS users_friend_code ON users(friend_code)")
             st.execute(
                 """CREATE TABLE IF NOT EXISTS sessions(
                     token TEXT PRIMARY KEY,
@@ -38,6 +42,38 @@ class Db(path: String) {
                     user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
                     data TEXT NOT NULL,
                     updated_at INTEGER NOT NULL)"""
+            )
+        }
+    }
+    init {
+        conn.createStatement().use { st ->
+            // Friendship is mutual: one row each way, so "my friends" is a single lookup.
+            st.execute(
+                """CREATE TABLE IF NOT EXISTS friends(
+                    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    friend_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    created_at INTEGER NOT NULL,
+                    PRIMARY KEY(user_id, friend_id))"""
+            )
+            // A block is one-way: [user_id] blocked [blocked_id], who can no longer add them back.
+            st.execute(
+                """CREATE TABLE IF NOT EXISTS blocks(
+                    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    blocked_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    created_at INTEGER NOT NULL,
+                    PRIMARY KEY(user_id, blocked_id))"""
+            )
+            // Reports keep the reported name as it was, so a later rename or deletion doesn't hide what was reported.
+            st.execute(
+                """CREATE TABLE IF NOT EXISTS reports(
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    reporter_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+                    reported_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+                    reported_name TEXT NOT NULL,
+                    reported_org TEXT NOT NULL,
+                    reason TEXT NOT NULL,
+                    created_at INTEGER NOT NULL,
+                    handled_at INTEGER)"""
             )
         }
     }
@@ -188,6 +224,125 @@ class Db(path: String) {
     private fun derive(password: String, salt: ByteArray, iterations: Int): ByteArray =
         SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256").generateSecret(PBEKeySpec(password.toCharArray(), salt, iterations, 256)).encoded
 
+    /* ---------- friends ---------- */
+
+    /** The user's friend code (6 letters and digits, no look-alikes such as O/0), created on first use. */
+    @Synchronized
+    fun friendCode(userId: Long): String {
+        conn.prepareStatement("SELECT friend_code FROM users WHERE id=?").use { ps ->
+            ps.setLong(1, userId); ps.executeQuery().use { r -> if (r.next()) r.getString(1)?.let { return it } }
+        }
+        while (true) {
+            val code = (1..6).map { CODE_CHARS[random.nextInt(CODE_CHARS.length)] }.joinToString("")
+            val taken = conn.prepareStatement("SELECT 1 FROM users WHERE friend_code=?").use { ps -> ps.setString(1, code); ps.executeQuery().use { it.next() } }
+            if (taken) continue
+            conn.prepareStatement("UPDATE users SET friend_code=? WHERE id=?").use { ps -> ps.setString(1, code); ps.setLong(2, userId); ps.executeUpdate() }
+            return code
+        }
+    }
+
+    @Synchronized
+    fun userIdByCode(code: String): Long? =
+        conn.prepareStatement("SELECT id FROM users WHERE friend_code=?").use { ps ->
+            ps.setString(1, code.trim().uppercase()); ps.executeQuery().use { r -> if (r.next()) r.getLong(1) else null }
+        }
+
+    @Synchronized
+    fun friendIds(userId: Long): List<Long> =
+        conn.prepareStatement("SELECT friend_id FROM friends WHERE user_id=? ORDER BY created_at").use { ps ->
+            ps.setLong(1, userId); ps.executeQuery().use { r -> buildList { while (r.next()) add(r.getLong(1)) } }
+        }
+
+    /** Makes [a] and [b] friends both ways. */
+    @Synchronized
+    fun addFriend(a: Long, b: Long) {
+        val now = System.currentTimeMillis()
+        conn.prepareStatement("INSERT OR IGNORE INTO friends(user_id,friend_id,created_at) VALUES(?,?,?)").use { ps ->
+            for ((x, y) in listOf(a to b, b to a)) { ps.setLong(1, x); ps.setLong(2, y); ps.setLong(3, now); ps.executeUpdate() }
+        }
+    }
+
+    @Synchronized
+    fun removeFriend(a: Long, b: Long) {
+        conn.prepareStatement("DELETE FROM friends WHERE (user_id=? AND friend_id=?) OR (user_id=? AND friend_id=?)").use { ps ->
+            ps.setLong(1, a); ps.setLong(2, b); ps.setLong(3, b); ps.setLong(4, a); ps.executeUpdate()
+        }
+    }
+
+    /** [a] blocks [b]: the friendship ends both ways and [b] can't add [a] again. Adding [b] by code later lifts the block. */
+    @Synchronized
+    fun block(a: Long, b: Long) {
+        removeFriend(a, b)
+        conn.prepareStatement("INSERT OR IGNORE INTO blocks(user_id,blocked_id,created_at) VALUES(?,?,?)").use { ps ->
+            ps.setLong(1, a); ps.setLong(2, b); ps.setLong(3, System.currentTimeMillis()); ps.executeUpdate()
+        }
+    }
+
+    @Synchronized
+    fun unblock(a: Long, b: Long) {
+        conn.prepareStatement("DELETE FROM blocks WHERE user_id=? AND blocked_id=?").use { ps -> ps.setLong(1, a); ps.setLong(2, b); ps.executeUpdate() }
+    }
+
+    /** Whether [a] has blocked [b]. */
+    @Synchronized
+    fun isBlocked(a: Long, b: Long): Boolean =
+        conn.prepareStatement("SELECT 1 FROM blocks WHERE user_id=? AND blocked_id=?").use { ps ->
+            ps.setLong(1, a); ps.setLong(2, b); ps.executeQuery().use { it.next() }
+        }
+
+    /** Stores a report of [reported] by [reporter] and returns its id. */
+    @Synchronized
+    fun addReport(reporter: Long, reported: Long, reason: String): Long {
+        val (name, org) = conn.prepareStatement("SELECT name,org FROM users WHERE id=?").use { ps ->
+            ps.setLong(1, reported); ps.executeQuery().use { r -> if (r.next()) r.getString(1) to r.getString(2) else "" to "" }
+        }
+        return conn.prepareStatement(
+            "INSERT INTO reports(reporter_id,reported_id,reported_name,reported_org,reason,created_at) VALUES(?,?,?,?,?,?)",
+            java.sql.Statement.RETURN_GENERATED_KEYS,
+        ).use { ps ->
+            ps.setLong(1, reporter); ps.setLong(2, reported); ps.setString(3, name); ps.setString(4, org)
+            ps.setString(5, reason); ps.setLong(6, System.currentTimeMillis()); ps.executeUpdate()
+            ps.generatedKeys.use { it.next(); it.getLong(1) }
+        }
+    }
+
+    /** Reports not yet handled, oldest first. */
+    @Synchronized
+    fun openReports(): List<ReportRow> =
+        conn.prepareStatement("SELECT id,reporter_id,reported_id,reported_name,reported_org,reason,created_at FROM reports WHERE handled_at IS NULL ORDER BY created_at").use { ps ->
+            ps.executeQuery().use { r ->
+                buildList { while (r.next()) add(ReportRow(r.getLong(1), r.getLong(2), r.getLong(3), r.getString(4), r.getString(5), r.getString(6), r.getLong(7))) }
+            }
+        }
+
+    /** The streak lives on the device; the app reports it with the local day it was counted on. */
+    @Synchronized
+    fun setStreak(userId: Long, streak: Int, day: Long) {
+        conn.prepareStatement("UPDATE users SET streak=?, streak_day=? WHERE id=?").use { ps ->
+            ps.setInt(1, streak.coerceIn(0, 100_000)); ps.setLong(2, day); ps.setLong(3, userId); ps.executeUpdate()
+        }
+    }
+
+    /** Name, organisation, reported streak and progress for each of [ids]. */
+    @Synchronized
+    fun friendRows(ids: List<Long>): List<FriendRow> {
+        if (ids.isEmpty()) return emptyList()
+        val marks = ids.joinToString(",") { "?" }
+        return conn.prepareStatement(
+            "SELECT u.id,u.name,u.org,u.streak,u.streak_day,p.data FROM users u LEFT JOIN progress p ON p.user_id=u.id WHERE u.id IN ($marks)"
+        ).use { ps ->
+            ids.forEachIndexed { i, id -> ps.setLong(i + 1, id) }
+            ps.executeQuery().use { r ->
+                buildList {
+                    while (r.next()) add(FriendRow(
+                        r.getLong(1), r.getString(2), r.getString(3), r.getInt(4), r.getLong(5),
+                        r.getString(6)?.let { json.decodeFromString<Progress>(it) } ?: Progress(),
+                    ))
+                }
+            }
+        }
+    }
+
     companion object {
         private const val ITERATIONS = 120_000
 
@@ -204,3 +359,9 @@ class Db(path: String) {
         }
     }
 }
+
+data class ReportRow(val id: Long, val reporterId: Long, val reportedId: Long, val name: String, val org: String, val reason: String, val at: Long)
+
+data class FriendRow(val id: Long, val name: String, val org: String, val streak: Int, val streakDay: Long, val progress: Progress)
+
+private const val CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"

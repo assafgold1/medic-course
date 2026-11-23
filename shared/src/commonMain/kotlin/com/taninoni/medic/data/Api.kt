@@ -5,6 +5,7 @@ import io.ktor.client.call.body
 import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.request.bearerAuth
+import io.ktor.client.request.delete
 import io.ktor.client.request.get
 import io.ktor.client.request.post
 import io.ktor.client.request.put
@@ -85,6 +86,28 @@ class Api(private val baseUrl: () -> String) {
         client.post(url("/api/me/delete")) {
             bearerAuth(token); contentType(ContentType.Application.Json); setBody(DeleteAccountRequest(password))
         }.done()
+
+    suspend fun friends(token: String): FriendsResponse = client.get(url("/api/friends")) { bearerAuth(token) }.ok()
+
+    suspend fun addFriend(token: String, code: String): FriendsResponse =
+        client.post(url("/api/friends")) {
+            bearerAuth(token); contentType(ContentType.Application.Json); setBody(AddFriendRequest(code))
+        }.ok()
+
+    suspend fun removeFriend(token: String, id: Long) = client.delete(url("/api/friends/$id")) { bearerAuth(token) }.done()
+
+    suspend fun blockFriend(token: String, id: Long) = client.post(url("/api/friends/$id/block")) { bearerAuth(token) }.done()
+
+    suspend fun reportFriend(token: String, id: Long, reason: String) =
+        client.post(url("/api/friends/$id/report")) {
+            bearerAuth(token); contentType(ContentType.Application.Json); setBody(ReportRequest(reason))
+        }.done()
+
+    suspend fun putStats(token: String, streak: Int, day: Long) {
+        runCatching {
+            client.put(url("/api/me/stats")) { bearerAuth(token); contentType(ContentType.Application.Json); setBody(StatsRequest(streak, day)) }
+        }
+    }
 
     suspend fun syncProgress(token: String, progress: Progress): Progress =
         client.put(url("/api/progress")) {
